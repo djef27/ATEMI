@@ -1,0 +1,3 @@
+-- Baseline du schéma distant existant.
+-- Aucun changement SQL.
+-- L'état de la base existait avant l'adoption de Supabase CLI migrations.
