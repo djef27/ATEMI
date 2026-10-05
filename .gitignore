@@ -56,3 +56,6 @@ cloudflared.exe
 
 # audit scratch scripts
 /_audit.js
+
+.vercel
+.env*
