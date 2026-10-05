@@ -4,7 +4,22 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 const BASE_URL = 'https://atemi.bj';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createServerSupabaseClient();
+  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+
+  try {
+    supabase = await createServerSupabaseClient();
+  } catch {
+    return [
+      { url: BASE_URL, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
+      { url: `${BASE_URL}/products`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+      { url: `${BASE_URL}/a-propos`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${BASE_URL}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${BASE_URL}/devenir-vendeur`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${BASE_URL}/comment-ca-marche`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+      { url: `${BASE_URL}/cgv`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
+      { url: `${BASE_URL}/politique-de-confidentialite`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
+    ];
+  }
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

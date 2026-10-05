@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { LayoutDashboard, ShoppingCart, Users, Package, Tag, CreditCard, ArrowLeft, Zap } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Users, Package, Tag, CreditCard, Truck, ArrowLeft, Zap } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/vendeurs', label: 'Vendeurs', icon: Users },
   { href: '/admin/produits', label: 'Produits', icon: Package },
   { href: '/admin/categories', label: 'Catégories', icon: Tag },
+  { href: '/admin/livraison', label: 'Livraison', icon: Truck },
   { href: '/admin/content', label: 'Publicités', icon: Zap },
 ];
 

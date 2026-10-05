@@ -15,14 +15,16 @@ interface HeaderInnerProps {
 
 export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerProps) {
   const { user, profile, loading, signOut } = useAuth();
-  const getItemCount = useCart((state) => state.getItemCount);
+  // Select the items themselves, not `getItemCount` — a selector returning a
+  // stable function never changes identity, so the badge would never re-render.
+  const cartItems = useCart((state) => state.items);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const itemCount = getItemCount();
+  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();

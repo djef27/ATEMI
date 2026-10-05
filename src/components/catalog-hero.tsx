@@ -1,91 +1,48 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-
-const SLIDES = [
-  {
-    src: 'https://images.unsplash.com/photo-1745669702821-b994a8b9ad78?w=1920&h=600&fit=crop&q=80',
-    alt: 'Mode africaine élégante — tenue traditionnelle',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1920&h=600&fit=crop&q=80',
-    alt: 'Perruques et coiffures afro tendance',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1589156280159-27698a70f29e?w=1920&h=600&fit=crop&q=80',
-    alt: 'Shopping et marché africain',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1774380479597-5e659025a777?w=1920&h=600&fit=crop&q=80',
-    alt: 'Collection tendance — style africain moderne',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1766107349536-c6de9ab38dcd?w=1920&h=600&fit=crop&q=80',
-    alt: 'Bijoux et accessoires africains',
-  },
-];
+import Link from 'next/link';
+import { ArrowDown, ArrowUpRight, Sparkles } from 'lucide-react';
 
 export default function CatalogHero() {
-  const [current, setCurrent] = useState(0);
-
-  const next = useCallback(() => {
-    setCurrent((c) => (c + 1) % SLIDES.length);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(next, 4500);
-    return () => clearInterval(timer);
-  }, [next]);
-
   return (
-    <section className="relative h-[200px] sm:h-[280px] lg:h-[340px] overflow-hidden bg-[#1A1919]">
-      {SLIDES.map((slide, idx) => (
-        <div
-          key={idx}
-          className={`absolute inset-0 transition-opacity duration-[1200ms] ease-in-out ${
-            idx === current ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <Image
-            src={slide.src}
-            alt={slide.alt}
-            fill
-            className="object-cover scale-105"
-            sizes="100vw"
-            priority={idx === 0}
-          />
-        </div>
-      ))}
+    <section className="relative overflow-hidden bg-[#f4eee6]">
+      <div aria-hidden="true" className="absolute -right-24 -top-36 h-[24rem] w-[24rem] rounded-full border border-[#a9876a]/20 sm:-right-12 sm:h-[34rem] sm:w-[34rem]" />
+      <div aria-hidden="true" className="absolute right-16 top-12 h-32 w-32 rounded-full bg-[radial-gradient(circle,#c98f6a_0_1px,transparent_1.5px)] bg-[length:14px_14px] opacity-30 sm:right-36 sm:top-16 sm:h-48 sm:w-48" />
 
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#1A1919]/80 via-[#1A1919]/30 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#1A1919]/60 via-transparent to-[#1A1919]/20" />
-
-      {/* Dots */}
-      <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2 z-10">
-        {SLIDES.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrent(idx)}
-            className={`h-1.5 rounded-full transition-all duration-500 ${
-              idx === current ? 'bg-primary-400 w-8' : 'bg-white/30 hover:bg-white/50 w-1.5'
-            }`}
-            aria-label={`Slide ${idx + 1}`}
-          />
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center z-10">
-        <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white font-serif mb-2 sm:mb-3 drop-shadow-lg">
-            Catalogue
-          </h1>
-          <p className="text-gray-300 text-xs sm:text-sm lg:text-base drop-shadow">
-            Mode, perruques, bijoux et accessoires — livraison à domicile
+      <div className="relative mx-auto flex min-h-[280px] max-w-7xl items-center justify-between gap-8 px-4 py-12 sm:min-h-[340px] sm:px-6 sm:py-16">
+        <div className="relative z-10 max-w-2xl">
+          <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9b6548] sm:text-xs">
+            <Sparkles className="h-3.5 w-3.5" />
+            La boutique des belles découvertes
           </p>
+          <h1 className="font-serif text-4xl font-medium leading-[1.02] tracking-[-0.035em] text-[#2d2118] sm:text-6xl">
+            Le catalogue
+            <span className="block italic text-[#a45d3d]">Atémi.</span>
+          </h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-[#62584f] sm:text-base sm:leading-7">
+            Des pièces choisies par les vendeurs du Bénin. Mode, beauté,
+            accessoires et trouvailles pour le quotidien.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Link
+              href="#products"
+              className="group inline-flex items-center gap-2 rounded-full bg-[#2d2118] px-5 py-3 text-xs font-semibold text-white transition hover:bg-[#493525] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a45d3d] focus-visible:ring-offset-2"
+            >
+              Parcourir les produits
+              <ArrowDown className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
+            </Link>
+            <span className="inline-flex items-center gap-2 text-xs font-medium text-[#76553e]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#a45d3d]" />
+              Acompte en ligne, solde à la livraison
+            </span>
+          </div>
         </div>
+
+        <Link
+          href="#products"
+          aria-label="Voir les produits du catalogue"
+          className="relative z-10 hidden h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[#a45d3d]/30 bg-white/40 text-[#493525] transition hover:-translate-y-1 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a45d3d] md:flex"
+        >
+          <ArrowUpRight className="h-6 w-6" />
+        </Link>
       </div>
     </section>
   );

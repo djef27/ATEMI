@@ -45,17 +45,20 @@ export const orderItemSchema = z.object({
 export const orderCreateSchema = z.object({
   p_customer_name: z
     .string()
+    .trim()
     .min(1, 'nom requis')
     .max(200, 'nom trop long'),
 
   p_customer_phone: z
     .string()
+    .trim()
     .min(1, 'téléphone requis')
     .max(20, 'téléphone trop long')
     .regex(/^\+?[0-9\s\-]+$/, 'format de téléphone invalide'),
 
   p_customer_whatsapp: z
     .string()
+    .trim()
     .max(20, 'whatsapp trop long')
     .regex(/^\+?[0-9\s\-]*$/, 'format whatsapp invalide')
     .nullable()
@@ -63,18 +66,21 @@ export const orderCreateSchema = z.object({
 
   p_delivery_address: z
     .string()
+    .trim()
     .max(500, 'adresse trop longue')
     .nullable()
     .optional(),
 
   p_delivery_city: z
     .string()
+    .trim()
     .max(100, 'ville trop longue')
     .nullable()
     .optional(),
 
   p_delivery_zone_id: z
     .string()
+    .trim()
     .uuid('zone invalide')
     .nullable()
     .optional(),
@@ -83,6 +89,7 @@ export const orderCreateSchema = z.object({
 
   p_customer_notes: z
     .string()
+    .trim()
     .max(1000, 'notes trop longues')
     .nullable()
     .optional(),
@@ -302,6 +309,68 @@ export const productUpdateSchema = z.object({
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 
 // ---------------------------------------------------------------------------
+// Delivery zone management (admin)
+// ---------------------------------------------------------------------------
+
+export const deliveryZoneCreateSchema = z.object({
+  country: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.string().length(2, 'pays invalide'))
+    .default('BJ'),
+
+  city: z
+    .string()
+    .trim()
+    .min(1, 'ville requise')
+    .max(100, 'ville trop longue'),
+
+  zone_name: z
+    .string()
+    .trim()
+    .min(1, 'nom de zone requis')
+    .max(100, 'nom de zone trop long'),
+
+  delivery_fee: z
+    .number()
+    .min(0, 'frais invalide')
+    .max(1_000_000, 'frais trop élevée')
+    .default(0),
+
+  is_available: z.boolean().default(true),
+});
+
+export type DeliveryZoneCreateInput = z.infer<typeof deliveryZoneCreateSchema>;
+
+export const deliveryZoneUpdateSchema = z.object({
+  city: z
+    .string()
+    .trim()
+    .min(1, 'ville requise')
+    .max(100, 'ville trop longue')
+    .optional(),
+
+  zone_name: z
+    .string()
+    .trim()
+    .min(1, 'nom de zone requis')
+    .max(100, 'nom de zone trop long')
+    .optional(),
+
+  delivery_fee: z
+    .number()
+    .min(0, 'frais invalide')
+    .max(1_000_000, 'frais trop élevée')
+    .optional(),
+
+  is_available: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
+
+export type DeliveryZoneUpdateInput = z.infer<typeof deliveryZoneUpdateSchema>;
+
+// ---------------------------------------------------------------------------
 // Payment initiation (guest/customer facing, order_number + tracking_token)
 // ---------------------------------------------------------------------------
 
@@ -313,3 +382,11 @@ export const paymentInitiateSchema = z.object({
 });
 
 export type PaymentInitiateInput = z.infer<typeof paymentInitiateSchema>;
+
+export const kkiapayVerifySchema = paymentInitiateSchema.extend({
+  transaction_id: z
+    .string()
+    .min(1, 'transaction_id requis')
+    .max(100, 'transaction_id trop longue')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'transaction_id invalide'),
+});

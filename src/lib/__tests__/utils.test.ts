@@ -1,4 +1,20 @@
-import { formatPrice } from '../utils';
+import { computeDepositAmounts, formatPrice } from '../utils';
+
+describe('computeDepositAmounts', () => {
+  it('splits the price using the configured deposit rate', () => {
+    expect(computeDepositAmounts(10000, 30)).toEqual({
+      deposit_amount: 3000,
+      remaining_amount: 7000,
+    });
+  });
+
+  it('uses the default deposit rate when none is configured', () => {
+    expect(computeDepositAmounts(10000, undefined)).toEqual({
+      deposit_amount: 5000,
+      remaining_amount: 5000,
+    });
+  });
+});
 
 describe('formatPrice', () => {
   it('formats zero correctly', () => {

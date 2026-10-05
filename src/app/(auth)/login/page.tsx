@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { sanitizeRedirect } from '@/lib/utils';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const redirect = sanitizeRedirect(searchParams.get('redirect'));
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {

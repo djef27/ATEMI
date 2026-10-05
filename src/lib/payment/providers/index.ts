@@ -11,6 +11,7 @@ import { getPaymentConfig } from '../config';
 import { MockPaymentProvider } from './mock';
 import { FedaPayPaymentProvider } from './fedapay';
 import { CinetPayPaymentProvider } from './cinetpay';
+import { KKiaPayPaymentProvider } from './kkiapay';
 
 let _realProvider: PaymentProvider | null = null;
 
@@ -44,19 +45,19 @@ export function getPaymentProvider(): PaymentProvider {
         webhookSecret: config.webhookSecret,
       });
       break;
-
-    // case 'stripe':
-    //   _realProvider = new StripePaymentProvider({ ... });
-    //   break;
-
-    // case 'paystack':
-    //   _realProvider = new PaystackPaymentProvider({ ... });
-    //   break;
+    case 'kkiapay':
+      _realProvider = new KKiaPayPaymentProvider({
+        publicKey: config.apiKey,
+        privateKey: config.privateKey,
+        secretKey: config.secretKey,
+        sandbox: config.sandbox,
+      });
+      break;
 
     default:
       throw new Error(
         `[PAYMENT] Provider non supporté: ${config.provider}. ` +
-        `Providers disponibles: mock, cinetpay, fedapay.`
+        `Fournisseurs disponibles: mock, cinetpay, fedapay, kkiapay.`
       );
   }
 
@@ -73,3 +74,4 @@ export function resetPaymentProvider(): void {
 export { MockPaymentProvider } from './mock';
 export { FedaPayPaymentProvider } from './fedapay';
 export { CinetPayPaymentProvider } from './cinetpay';
+export { KKiaPayPaymentProvider } from './kkiapay';

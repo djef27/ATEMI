@@ -1,27 +1,30 @@
 # PROCÉDURE DE TEST E2E SANDBOX (PAIEMENT)
 
-Document de procédure pour valider de bout en bout le flux de paiement réel
-(CinetPay en priorité, FedaPay en legacy) AVANT tout passage en production.
+Document de procédure pour valider de bout en bout les flux de paiement réels
+(KKiaPay, CinetPay et FedaPay) AVANT tout passage en production.
 
-> **STATUT : NON EXÉCUTÉE — BLOQUÉE.**
-> Aucune URL publique HTTPS stable n'est disponible (`NEXT_PUBLIC_APP_URL` =
-> `localhost:3000`). CinetPay ne prend en charge que les `notify_url` accessibles
-> depuis Internet. Tant que cette URL n'existe pas, l'E2E réel est impossible.
+> **STATUT : À EXÉCUTER AVEC DES CLÉS SANDBOX.**
+> Les tests CinetPay/FedaPay nécessitent une URL HTTPS publique stable pour les
+> notifications. KKiaPay utilise son widget web et une vérification serveur; il
+> ne dépend pas de `NEXT_PUBLIC_APP_URL` ni du webhook générique.
 
 ---
 
 ## 0. Prérequis (blocage actuel)
 
-- [ ] Déployer l'application derrière une URL HTTPS publique (Vercel, Railway,
-      Fly.io, tunnel Cloudflare…). Sans cela, arrêter ici.
-- [ ] Renseigner `NEXT_PUBLIC_APP_URL` avec cette URL.
-- [ ] Clés CinetPay sandbox configurées :
+- [ ] Pour CinetPay/FedaPay seulement : déployer derrière une URL HTTPS publique
+      et renseigner `NEXT_PUBLIC_APP_URL`.
+- [ ] Choisir un seul fournisseur pour le test. Pour KKiaPay, configurer les trois
+      clés Sandbox `KKIAPAY_PUBLIC_KEY`, `KKIAPAY_PRIVATE_KEY` et
+      `KKIAPAY_SECRET_KEY`, puis `PAYMENT_PROVIDER=kkiapay` et
+      `KKIAPAY_SANDBOX=true`.
+- [ ] Pour CinetPay, configurer les clés sandbox :
       `CINETPAY_API_KEY`, `CINETPAY_SITE_ID`, `CINETPAY_SECRET_KEY`.
-- [ ] Bascule volontaire : `PAYMENT_PROVIDER=cinetpay` dans `.env.local`
-      (ne **jamais** basculer tant que le point précédent n'est pas rempli).
+- [ ] Pour FedaPay, configurer ses clés sandbox et son secret webhook.
 - [ ] Migrations déployées :
       `20260911120000_payment_provider_and_sync.sql` +
-      `20260911130000_notification_dispatcher.sql`.
+      `20260911130000_notification_dispatcher.sql` +
+      `20261002190000_unique_provider_payment_reference.sql`.
 
 ---
 
@@ -42,6 +45,23 @@ LIMIT 1;
 ```
 
 ## 2. Scénarios E2E
+
+### 2.0 KKiaPay (widget + vérification serveur)
+
+1. Créer une commande via le checkout et ouvrir le widget KKiaPay.
+2. Utiliser un numéro Sandbox documenté par KKiaPay (ex. `97000000` pour
+   succès, `97000003` pour refus au Bénin).
+3. Après le succès du widget, vérifier que le navigateur appelle
+   `POST /api/payment/kkiapay/verify` avec l'identifiant de transaction.
+4. Vérifier que le serveur confirme la transaction via le SDK KKiaPay avant
+   toute mise à jour du paiement. Un retour du widget seul ne doit jamais mettre
+   une commande en `paid`.
+5. Rejouer la même transaction : elle ne doit pas être appliquée à une seconde
+   commande ni déclencher une seconde confirmation.
+
+Le widget peut être testé depuis une origine autorisée dans le compte marchand.
+En cas de blocage CSP, vérifier les directives `script-src`, `frame-src` et
+`connect-src` dans `next.config.mjs`.
 
 ### 2.1 Parcours nominal
 1. Checkout → redirection vers `payment_url` CinetPay (page de paiement hébergée).
@@ -114,8 +134,7 @@ FROM notifications ORDER BY created_at DESC;
 
 ## 4. Quitter le sandbox
 
-1. Remettre `PAYMENT_PROVIDER=fedapay` (≤ état actuel) tant que les étapes
-   précédentes ne sont pas toutes vertes.
+1. Remettre `PAYMENT_PROVIDER=mock` après les tests Sandbox.
 2. Effacer toutes les commandes de test et logs webhook de test en base.
 3. Ne passer en production qu'avec des **clés live** et après validation
    complète de la liste de sécurité dans `PRODUCTION_PAYMENTS.md`.

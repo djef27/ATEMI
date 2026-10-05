@@ -106,12 +106,18 @@
   - clés `CINETPAY_*` ABSENTES ; `PAYMENT_PROVIDER=fedapay` conservé ; bascule uniquement quand les clés sont posées.
 - **Phase 10 — Rapport URL publique** ✅
   - aucune URL HTTPS publique stable ; documenté comme **bloqueur E2E** dans `E2E_SANDBOX_TEST_PROCEDURE.md`.
-- **Phase 11 — Tests** ✅ (195 tests, 13 suites, typecheck OK)
+- **Phase 11 — Tests** ✅ (260 tests, 16 suites, typecheck OK)
   - `dispatcher.test.ts` : 2 workers concurrents (1 seul envoi), retry, erreur définitive, max attempts, numéro manquant, sent non recyclé.
   - `webhook-events.test.ts` : parsing JSON / form-encoded / enveloppe FedaPay, montant/devise (XOF sans division, cents Stripe/Paystack /100, CinetPay cpm_*).
   - `cinetpay.test.ts` étendu : mapping statuts ACCEPTED→succeeded, REFUSED→failed, PENDING/CREATED→pending ; erreur HTTP check API ; montant/devise renvoyés.
 - **Phase 12 — Documentation E2E sandbox** ✅ (`E2E_SANDBOX_TEST_PROCEDURE.md`)
   - procédure complète (nominal, rejeu webhook, refus, montant/devise divergent, en attente, dispatch concurrent, retry) ; ciblé NON exécuté (pas d'URL publique).
+- **Phase 13 — Adresses & villes de livraison** ✅
+  - Migration `20260924000000_delivery_zones_benin_v2.sql` : corrige les zones mal classées (Possotomé/Sèmè-Podji/Togba sous Cotonou…), normalise `country='BJ'`, déduplique, crée l'index unique `(country, city, zone_name)`, ajoute la colonne générée `city_normalized` (accent-insensible) et étend le référentiel à ~70 zones / ~60 villes des 12 départements (Abomey-Calavi, Djougou, Allada, Sakété, Pobè, Kétou, Savè…). **À DÉPLOYER** (SQL Editor).
+  - API publique `GET /api/delivery-zones` : `?country=BJ`, mode `?cities=1` (liste des villes + frais min + nb zones pour l'autocomplétion), recherche de ville via `city_normalized` (insensible accents/casse/espaces), ordre par frais.
+  - Checkout : `<datalist>` des villes livrées, autocorrection de la saisie (`normalizeCity`, ex. `come` → `Comè`), correction d'une zone de livraison obsolète après changement de ville, champ adresse en textarea avec repère (« rue, quartier, point de repère »), encart vert « Livraison disponible à {ville} — à partir de {frais} ».
+  - **Admin** : page `/admin/livraison` (groupée par ville, recherche, création modal, édition, bascules Disponible/Active, désactivation douce) + API `/api/admin/delivery-zones` (GET/POST, doublon → 409) et `[id]` (PATCH/DELETE) protégées `withAdminAuth` ; entrée « Livraison » ajoutée au menu admin.
+  - Schémas zod `deliveryZoneCreateSchema` / `deliveryZoneUpdateSchema` (`.trim()`, frais 0–1 000 000, pays 2 lettres) + helper `normalizeCity` ; tests `delivery-zones.test.ts` (21) ✅.
 
 ### WhatsApp/Meta Cloud API — code 100% prêt et vérifié :
   - Webhook `/api/whatsapp/webhook` : route OK (GET 403 si mauvaise clé, POST 401 si signature invalide — vérifiés en live).
@@ -127,7 +133,7 @@
 - **UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN absents** : en production, les endpoints financiers (création commande, confirmation paiement, etc.) sont **bloqués en fail-closed** tant qu'Upstash n'est pas configuré (cf. `src/lib/rate-limit.ts`).
 - **BREVO_API_KEY absente** : les emails transactionnels sont loggés en console (jamais envoyés).
 - **CRON_SECRET absent** : `/api/notifications/dispatch` fonctionne manuellement (admin) et après paiement, mais pas en automatisation cron. `vercel.json` ajouté (cron toutes les 5 min) — fonctionne dès que `CRON_SECRET` est défini dans Vercel.
-- **Migrations** `20260911120000` / `20260911130000` (et `20260911140000`) à déployer (via SQL Editor Supabase ou CLI avec `SUPABASE_DB_PASSWORD`).
+- **Migrations** `20260911120000` / `20260911130000` / `20260911140000` / `20260924000000_delivery_zones_benin_v2.sql` à déployer (via SQL Editor Supabase ou CLI avec `SUPABASE_DB_PASSWORD`). Sans la dernière, l'autocomplétion des villes du checkout reste vide (`city_normalized` absente).
 - **E2E paiement réel** : non exécuté (pas d'URL publique).
 
 ## Configuré (mise à jour récente)
@@ -155,6 +161,7 @@
 
 - **À DÉPLOYER** : `supabase/migrations/20260911120000_payment_provider_and_sync.sql` (create_order + p_provider, get_order_receipt/tracking, traçabilité payments)
 - **À DÉPLOYER** : `supabase/migrations/20260911130000_notification_dispatcher.sql` (enum sending, attempts/next_retry_at, claim RPC)
+- **À DÉPLOYER** : `supabase/migrations/20260924000000_delivery_zones_benin_v2.sql` (correctifs + extension zones/villes Bénin, `city_normalized`, index unique)
 - `remote_schema_backup.sql` est un snapshot OLD (pré-07/09) — ne pas l'utiliser comme référence de la DB live
 
 ## Routes disponibles
@@ -182,6 +189,10 @@
 | `/admin/vendeurs` | Client | Admin | Vendeurs admin |
 | `/admin/produits` | Client | Admin | Produits admin |
 | `/admin/categories` | Client | Admin | Catégories admin |
+| `/admin/livraison` | Client | Admin | Zones de livraison admin |
+| `/api/delivery-zones` | API | Public | Zones + villes de livraison (autocomplétion) |
+| `/api/admin/delivery-zones` | API | Admin | CRUD zones (list + create, doublon → 409) |
+| `/api/admin/delivery-zones/[id]` | API | Admin | Modifier / désactiver une zone |
 | `/api/payment/confirm` | API | Admin | Confirmation paiement |
 | `/api/admin/orders/[id]` | API | Admin | Détail + statut commande |
 | `/api/admin/produits/[id]` | API | Admin | Édition / suppression produit |

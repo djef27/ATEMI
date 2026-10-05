@@ -90,6 +90,13 @@ export async function POST(request: NextRequest) {
 
     const config = getPaymentConfig();
 
+    if (config.provider === 'kkiapay') {
+      return NextResponse.json(
+        { success: false, error: 'KKiaPay se confirme via /api/payment/kkiapay/verify' },
+        { status: 501 }
+      );
+    }
+
     if (config.isMock || (config.provider !== 'cinetpay' && !config.webhookSecret)) {
       return NextResponse.json(
         {

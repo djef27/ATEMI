@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { paymentInitiateSchema } from '@/lib/validations';
 import { getPaymentConfig } from '@/lib/payment/config';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { createCinetPayPayment } from '@/lib/payment/providers/cinetpay';
 import { getPaymentMethods } from '@/lib/payment/countries';
+import { isOrderStatusTerminal } from '@/lib/order-status';
+import { getClientIp } from '@/lib/request';
+import type { OrderStatus } from '@/types';
 
 /**
  * POST /api/payment/initiate
  *
  * Client/guest-facing endpoint. Verifies order via order_number + tracking_token
  * (same pattern as get_order_tracking / get_order_receipt), then creates a real
- * payment transaction on the configured provider (CinetPay / FedaPay) and
- * returns its hosted payment_url for redirect.
+ * payment transaction on the configured provider and returns either its hosted
+ * payment_url or the public configuration required to open the KKiaPay widget.
  *
  * Reuses an existing payment_url if one was already created (idempotent, avoids
  * stacking provider transactions on page reload).
@@ -26,9 +30,7 @@ function getFedaPayBaseUrl(apiSecret: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown';
+    const ip = getClientIp(request);
     const rl = await checkRateLimit(`ip:${ip}`, RATE_LIMIT_CONFIGS.paymentInitiate);
     if (!rl.allowed) {
       return NextResponse.json(
@@ -50,9 +52,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { order_number, tracking_token, country, payment_method } = parsed.data;
-    if (country && payment_method) {
+    if (country) {
       const countryConfig = getPaymentMethods(country);
-      const methodIsEnabled = countryConfig?.paymentMethods.some(
+      if (!countryConfig) {
+        return NextResponse.json(
+          { success: false, error: 'Pays non pris en charge pour le paiement' },
+          { status: 400 }
+        );
+      }
+      const methodIsEnabled = !payment_method || countryConfig.paymentMethods.some(
         (method) => method.id === payment_method
       );
       if (!methodIsEnabled) {
@@ -81,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
-      .select('id, amount, status, payment_url, transaction_reference')
+      .select('id, amount, status, payment_url, transaction_reference, provider, provider_transaction_id')
       .eq('order_id', order.id)
       .eq('payment_type', 'deposit')
       .single();
@@ -98,11 +106,93 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, already_paid: true });
     }
 
+    // Une commande annulee / echouee / terminee ne doit plus etre payable :
+    // le client serait debite pour une commande que personne ne treatera.
+    if (isOrderStatusTerminal(order.status as OrderStatus)) {
+      return NextResponse.json(
+        { success: false, error: 'Cette commande ne peut plus etre payee' },
+        { status: 409 }
+      );
+    }
+
+    const config = getPaymentConfig();
+
+    if (
+      payment.provider &&
+      payment.provider !== config.provider &&
+      (payment.transaction_reference || payment.provider_transaction_id || payment.payment_url)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Un paiement a déjà été démarré avec un autre fournisseur' },
+        { status: 409 }
+      );
+    }
+
+    if (config.provider === 'kkiapay') {
+      if (!config.apiKey || !config.privateKey || !config.secretKey) {
+        return NextResponse.json(
+          { success: false, error: 'Les clés KKiaPay publique, privée et secrète doivent être configurées' },
+          { status: 503 }
+        );
+      }
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({
+          provider: 'kkiapay',
+          country: country?.toUpperCase() || 'BJ',
+          payment_method: payment_method || 'mobile_money',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', payment.id);
+
+      if (updateError) {
+        console.error('[PAYMENT_INITIATE] KKiaPay metadata update failed:', updateError.message);
+        return NextResponse.json(
+          { success: false, error: 'Impossible de préparer le paiement KKiaPay' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        provider: 'kkiapay',
+        amount: payment.amount,
+        public_key: config.apiKey,
+        sandbox: config.sandbox,
+        transaction_id: payment.provider_transaction_id,
+        country: country?.toUpperCase() || 'BJ',
+        customer: {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          email: order.customer_email,
+        },
+      });
+    }
+
+    if (config.isMock) {
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({
+          provider: 'mock',
+          country: country?.toUpperCase() || null,
+          payment_method: payment_method || 'mobile_money',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', payment.id);
+      if (updateError) {
+        console.error('[PAYMENT_INITIATE] mock metadata update failed:', updateError.message);
+        return NextResponse.json(
+          { success: false, error: 'Impossible de préparer la simulation de paiement' },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({ success: true, provider: 'mock', amount: payment.amount });
+    }
+
     // If transaction_reference exists but payment_url is missing, the DB update
     // failed after FedaPay transaction creation. Also detect failed provider
     // transactions so a retry gets a fresh payment session.
     if (payment.transaction_reference) {
-      const config = getPaymentConfig();
       if (config.provider === 'fedapay') {
         const baseUrl = getFedaPayBaseUrl(config.apiSecret);
         try {
@@ -110,25 +200,56 @@ export async function POST(request: NextRequest) {
             `${baseUrl}/v1/transactions/${payment.transaction_reference}`,
             { headers: { Authorization: `Bearer ${config.apiSecret}` } }
           );
-          if (checkResponse.ok) {
-            const checkData = await checkResponse.json();
-            const tx = checkData['v1/transaction'];
-            const providerStatus = String(tx?.status || '').toLowerCase();
-            if (['declined', 'canceled', 'cancelled', 'failed'].includes(providerStatus)) {
-              await supabase
-                .from('payments')
-                .update({
-                  payment_url: null,
-                  transaction_reference: null,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', payment.id);
-            } else if (tx?.payment_url) {
-              return NextResponse.json({ success: true, payment_url: tx.payment_url });
+          if (!checkResponse.ok) {
+            if (payment.payment_url) {
+              return NextResponse.json({ success: true, payment_url: payment.payment_url });
             }
+            return NextResponse.json(
+              { success: false, error: 'Impossible de vérifier la transaction existante chez FedaPay' },
+              { status: 502 }
+            );
           }
-        } catch {
-          // Fall through to create new transaction
+
+          const checkData = await checkResponse.json();
+          const tx = checkData['v1/transaction'];
+          const providerStatus = String(tx?.status || '').toLowerCase();
+          if (['declined', 'canceled', 'cancelled', 'failed'].includes(providerStatus)) {
+            const { error: clearError } = await supabase
+              .from('payments')
+              .update({
+                payment_url: null,
+                transaction_reference: null,
+                provider_transaction_id: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', payment.id);
+            if (clearError) {
+              console.error('[PAYMENT_INITIATE] failed to clear declined FedaPay transaction:', clearError.message);
+              return NextResponse.json(
+                { success: false, error: 'Impossible de réinitialiser la transaction refusée' },
+                { status: 500 }
+              );
+            }
+          } else if (tx?.payment_url || payment.payment_url) {
+            return NextResponse.json({
+              success: true,
+              payment_url: tx?.payment_url || payment.payment_url,
+            });
+          } else {
+            return NextResponse.json(
+              { success: false, error: 'La transaction FedaPay existe sans URL de paiement' },
+              { status: 502 }
+            );
+          }
+        } catch (error) {
+          console.error('[PAYMENT_INITIATE] FedaPay transaction lookup failed:', error);
+          if (payment.payment_url) {
+            return NextResponse.json({ success: true, payment_url: payment.payment_url });
+          }
+          return NextResponse.json(
+            { success: false, error: 'Impossible de vérifier la transaction existante chez FedaPay' },
+            { status: 502 }
+          );
         }
       }
     }
@@ -137,17 +258,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, payment_url: payment.payment_url });
     }
 
-    const config = getPaymentConfig();
-
     if (config.provider === 'cinetpay') {
-      if (payment.payment_url && payment.transaction_reference) {
+      if (payment.status !== 'failed' && payment.payment_url && payment.transaction_reference) {
         return NextResponse.json({ success: true, payment_url: payment.payment_url });
       }
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-      // ID DÉTERMINISTE : si l'écriture précédente a échoué après la création
-      // côté CinetPay, un retry réutilise LE MÊME transactionId au lieu d'en
-      // créer une nouvelle transaction orpheline.
-      const transactionId = payment.transaction_reference || `ATEMI-${order.order_number}`;
+      // Pending retries reuse the same ID after a partial write; declined
+      // transactions need a fresh ID because CinetPay will not reopen them.
+      const transactionId = payment.status === 'failed'
+        ? `ATEMI-${order.order_number}-${randomUUID().replace(/-/g, '').slice(0, 10)}`
+        : payment.transaction_reference || `ATEMI-${order.order_number}`;
       try {
         // 1. Persister d'abord les métadonnées fournisseur (atomique).
         const { error: metaError } = await supabase
@@ -156,6 +276,7 @@ export async function POST(request: NextRequest) {
             provider: 'cinetpay',
             transaction_reference: transactionId,
             provider_transaction_id: transactionId,
+            payment_url: null,
             country: country?.toUpperCase() || null,
             payment_method: payment_method || 'cinetpay',
             updated_at: new Date().toISOString(),
@@ -286,8 +407,12 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from('payments')
       .update({
+        provider: 'fedapay',
         transaction_reference: transaction.reference,
+        provider_transaction_id: transaction.id ? String(transaction.id) : transaction.reference,
         payment_url: transaction.payment_url,
+        country: country?.toUpperCase() || null,
+        payment_method: payment_method || 'mobile_money',
         updated_at: new Date().toISOString(),
       })
       .eq('id', payment.id);

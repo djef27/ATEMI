@@ -2,7 +2,7 @@ export interface CountryPaymentConfig {
   country: string;
   currency: 'XOF';
   paymentMethods: Array<{ id: string; displayName: string; enabled: boolean }>;
-  provider: 'cinetpay' | 'fedapay';
+  provider: 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay';
 }
 
 const COUNTRY_METHODS: Record<string, Array<{ id: string; displayName: string }>> = {
@@ -34,16 +34,25 @@ export function getPaymentMethods(country: string): CountryPaymentConfig | null 
   const methods = COUNTRY_METHODS[code];
   if (!methods) return null;
 
-  // Keep the existing FedaPay flow usable until CinetPay is selected.
-  // CinetPay operators are exposed only when explicitly configured.
-  if (process.env.PAYMENT_PROVIDER?.toLowerCase() !== 'cinetpay') {
+  const provider = process.env.PAYMENT_PROVIDER?.trim().toLowerCase() || 'mock';
+  if (provider === 'kkiapay') {
     return {
       country: code,
       currency: 'XOF',
-      provider: 'fedapay',
+      provider: 'kkiapay',
       paymentMethods: [{ id: 'mobile_money', displayName: 'Mobile Money', enabled: true }],
     };
   }
+
+  if (provider === 'mock' || provider === 'fedapay') {
+    return {
+      country: code,
+      currency: 'XOF',
+      provider,
+      paymentMethods: [{ id: 'mobile_money', displayName: 'Mobile Money', enabled: true }],
+    };
+  }
+  if (provider !== 'cinetpay') return null;
 
   const configured = process.env[ENABLED_METHODS_ENV[code]]
     ?.split(',')
@@ -60,23 +69,7 @@ export function getPaymentMethods(country: string): CountryPaymentConfig | null 
   };
 }
 
-export const PAYMENT_COUNTRIES: CountryPaymentConfig[] = [
-  {
-    country: 'BJ',
-    currency: 'XOF',
-    provider: 'cinetpay',
-    paymentMethods: getPaymentMethods('BJ')?.paymentMethods || [],
-  },
-  {
-    country: 'CI',
-    currency: 'XOF',
-    provider: 'cinetpay',
-    paymentMethods: getPaymentMethods('CI')?.paymentMethods || [],
-  },
-  {
-    country: 'TG',
-    currency: 'XOF',
-    provider: 'cinetpay',
-    paymentMethods: getPaymentMethods('TG')?.paymentMethods || [],
-  },
-];
+export const PAYMENT_COUNTRIES: CountryPaymentConfig[] = ['BJ', 'CI', 'TG'].flatMap((country) => {
+  const config = getPaymentMethods(country);
+  return config ? [config] : [];
+});

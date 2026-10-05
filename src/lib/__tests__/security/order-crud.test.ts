@@ -169,9 +169,9 @@ describe('Admin products [id] route', () => {
   });
 
   it('recomputes deposit amounts on price/rate change', () => {
-    expect(route).toContain('deposit_amount');
-    expect(route).toContain('remaining_amount');
-    expect(route).toContain('Math.round(price * rate / 100)');
+    expect(route).toContain('computeDepositAmounts(price, rate)');
+    expect(route).toContain('updates.deposit_rate');
+    expect(route).toContain('updates.selling_price');
   });
 
   it('auto-handles stock transitions', () => {

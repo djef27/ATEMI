@@ -432,7 +432,7 @@ describe('Vendor Product CRUD', () => {
   });
 
   describe('Deposit calculation', () => {
-    it('PATCH recalculates deposit_amount and remaining_amount', async () => {
+    it('PATCH recalculates deposit amounts when price or rate changes', async () => {
       const fs = require('fs');
       const path = require('path');
       const route = fs.readFileSync(
@@ -440,8 +440,7 @@ describe('Vendor Product CRUD', () => {
         'utf-8'
       );
 
-      expect(route).toContain('deposit_amount');
-      expect(route).toContain('remaining_amount');
+      expect(route).toContain('computeDepositAmounts(price, rate)');
       expect(route).toContain('deposit_rate');
     });
   });

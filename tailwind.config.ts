@@ -63,8 +63,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        serif: ['Georgia', '"Times New Roman"', 'serif'],
+        sans: ['system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
       },
     },
   },

@@ -27,16 +27,17 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
 const GENERIC_FALLBACK = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=800&fit=crop&q=80';
 
 interface ProductPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   try {
-    const supabase = createServerSupabaseClient();
+    const { slug } = await params;
+    const supabase = await createServerSupabaseClient();
     const { data: product } = await supabase
       .from('products')
       .select('name, description')
-      .eq('slug', params.slug)
+      .eq('slug', slug)
       .eq('status', 'active')
       .is('deleted_at', null)
       .single();
@@ -55,15 +56,17 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
+  const { slug } = await params;
   let product: Record<string, unknown> | null = null;
+  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
 
   try {
-    const supabase = createServerSupabaseClient();
+    supabase = await createServerSupabaseClient();
 
     const { data } = await supabase
       .from('products')
       .select('id, name, slug, description, selling_price, supplier_price, deposit_rate, deposit_amount, remaining_amount, stock, status, vendor_id, category_id, created_at, updated_at')
-      .eq('slug', params.slug)
+      .eq('slug', slug)
       .eq('status', 'active')
       .is('deleted_at', null)
       .single();
@@ -81,7 +84,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   let mediaRows: Array<{ image_url: string; alt_text: string; media_type: string; sort_order: number; is_primary: boolean }> = [];
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data } = await supabase
       .from('product_images')
       .select('image_url, alt_text, media_type, sort_order, is_primary')
@@ -108,7 +111,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   let vendor: { id: string; name: string; city: string } | null = null;
   if (vendorId) {
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
       const { data } = await supabase
         .from('vendors')
         .select('id, name, city')
@@ -125,7 +128,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   let category: { id: string; name: string; slug: string } | null = null;
   if (categoryId) {
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
       const { data } = await supabase
         .from('categories')
         .select('id, name, slug')
@@ -290,7 +293,7 @@ async function SimilarProducts({
   let similarProducts: Array<{ id: string; name: string; slug: string; selling_price: number; deposit_rate: number; image_url: string | null }> = [];
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: products } = await supabase
       .from('products')
       .select('id, name, slug, selling_price, deposit_rate')
@@ -339,9 +342,11 @@ async function SimilarProducts({
           >
             <div className="aspect-square bg-primary-50 overflow-hidden">
               {p.image_url ? (
-                <img
+                <Image
                   src={p.image_url}
                   alt={p.name}
+                  width={400}
+                  height={400}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (

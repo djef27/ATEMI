@@ -1,4 +1,4 @@
-import { paymentConfirmSchema, orderCreateSchema } from '@/lib/validations';
+import { kkiapayVerifySchema, paymentConfirmSchema, orderCreateSchema } from '@/lib/validations';
 
 describe('Security: Input Validation', () => {
   describe('paymentConfirmSchema', () => {
@@ -18,6 +18,25 @@ describe('Security: Input Validation', () => {
         payment_method: 'cash',
       });
       expect(result.success).toBe(true);
+    });
+
+    describe('kkiapayVerifySchema', () => {
+      const validVerification = {
+        order_number: 'CMD-20261002-123456',
+        tracking_token: '550e8400-e29b-41d4-a716-446655440000',
+        transaction_id: '0845058258857440',
+      };
+
+      it('accepts a transaction reference from KKiaPay', () => {
+        expect(kkiapayVerifySchema.safeParse(validVerification).success).toBe(true);
+      });
+
+      it('rejects malformed transaction references', () => {
+        expect(kkiapayVerifySchema.safeParse({
+          ...validVerification,
+          transaction_id: '<script>',
+        }).success).toBe(false);
+      });
     });
 
     it('accepts missing optional fields', () => {

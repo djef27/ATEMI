@@ -155,7 +155,7 @@ const MediaUpload = forwardRef<MediaUploadHandle, MediaUploadProps>(
       });
     }, []);
 
-    const uploadOneFile = async (pending: PendingFile, index: number): Promise<UploadedMedia | null> => {
+    const uploadOneFile = useCallback(async (pending: PendingFile, index: number): Promise<UploadedMedia | null> => {
       if (pending.uploaded || pending.error) return null;
 
       let fileToUpload = pending.file;
@@ -213,7 +213,7 @@ const MediaUpload = forwardRef<MediaUploadHandle, MediaUploadProps>(
         );
         return null;
       }
-    };
+    }, [productId, supabase]);
 
     const uploadFiles = useCallback(async (): Promise<UploadedMedia[]> => {
       const toUpload = pendingFiles.filter(f => !f.uploaded && !f.error);
@@ -240,7 +240,7 @@ const MediaUpload = forwardRef<MediaUploadHandle, MediaUploadProps>(
 
       setUploading(false);
       return uploadedMedia;
-    }, [pendingFiles, existingMedia, supabase]);
+    }, [pendingFiles, existingMedia, uploadOneFile]);
 
     useImperativeHandle(ref, () => ({
       uploadFiles,

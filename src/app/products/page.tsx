@@ -6,6 +6,7 @@ import MobileFilterBar from '@/components/mobile-filter-bar';
 import Breadcrumbs from '@/components/breadcrumbs';
 import CatalogHero from '@/components/catalog-hero';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { PublicProduct } from '@/types';
 
@@ -15,14 +16,52 @@ export const metadata: Metadata = {
 };
 
 interface ProductsPageProps {
-  searchParams: { q?: string; category?: string; sort?: string };
+  searchParams: Promise<{ q?: string; category?: string; sort?: string; page?: string }>;
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const supabase = createServerSupabaseClient();
-  const searchQuery = searchParams.q?.trim() || '';
-  const categorySlug = searchParams.category?.trim() || '';
-  const sortParam = searchParams.sort?.trim() || '';
+  const resolvedSearchParams = await searchParams;
+  const searchQuery = resolvedSearchParams.q?.trim() || '';
+  const categorySlug = resolvedSearchParams.category?.trim() || '';
+  const sortParam = resolvedSearchParams.sort?.trim() || '';
+  const requestedPage = Number.parseInt(resolvedSearchParams.page || '1', 10);
+  const pageSize = 24;
+  const maxPage = Math.floor(Number.MAX_SAFE_INTEGER / (pageSize + 1));
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= maxPage
+    ? requestedPage
+    : 1;
+  const rangeStart = (page - 1) * pageSize;
+  const rangeEnd = rangeStart + pageSize;
+
+  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+
+  try {
+    supabase = await createServerSupabaseClient();
+  } catch {
+    return (
+      <main className="min-h-screen bg-[#FAFAF8]">
+        <CatalogHero />
+        <div className="mx-auto max-w-4xl px-4 py-16 text-center text-gray-700">
+          <h1 className="font-serif text-3xl font-bold text-[#1A1919] mb-3">Catalogue indisponible</h1>
+          <p className="text-base text-gray-600">
+            La configuration Supabase est inactive ou absente. Ajoutez l&apos;URL et les clés du projet actif pour réactiver le catalogue.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const categoriesPromise = (async () => {
+    try {
+      return await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .eq('is_active', true)
+        .order('name');
+    } catch {
+      return { data: null, error: null };
+    }
+  })();
 
   let products: Array<{
     id: string;
@@ -40,6 +79,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   }> = [];
   let queryError = false;
   let categoryNotFound = false;
+  let hasNextPage = false;
 
   try {
     let query = supabase
@@ -105,6 +145,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             } else {
               products = allProducts;
             }
+            hasNextPage = products.length > rangeEnd;
+            products = products.slice(rangeStart, rangeEnd);
           }
           break;
         }
@@ -116,12 +158,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       }
 
       if (sortParam !== 'best') {
-        const { data, error } = await query.order(sortColumn, { ascending });
+        const { data, error } = await query
+          .order(sortColumn, { ascending })
+          .range(rangeStart, rangeEnd);
 
         if (error) {
           queryError = true;
         } else {
-          products = data || [];
+          const pageProducts = data || [];
+          hasNextPage = pageProducts.length > pageSize;
+          products = pageProducts.slice(0, pageSize);
         }
       }
     }
@@ -129,81 +175,84 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     queryError = true;
   }
 
-  // Fetch categories for filter sidebar
+  // Fetch categories alongside product data to avoid adding another round trip.
   let categories: Array<{ id: string; name: string; slug: string }> = [];
-  try {
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('id, name, slug')
-      .eq('is_active', true)
-      .order('name');
-    categories = cats || [];
-  } catch {
-    // ignore
-  }
+  const { data: cats } = await categoriesPromise;
+  categories = cats || [];
 
   const productIds = products.map(p => p.id);
 
   const primaryImages = new Map<string, string>();
+  const vendorIds = Array.from(new Set(products.map(p => p.vendor_id).filter(Boolean)));
+  const vendorMap = new Map<string, string>();
+  const categoryIds = Array.from(new Set(products.map(p => p.category_id).filter(Boolean)));
+  const categoryMap = new Map<string, { id: string; name: string; slug: string }>();
 
-  if (productIds.length > 0) {
+  const loadMedia = async () => {
+    if (productIds.length === 0) return null;
     try {
-      const { data: mediaRows } = await supabase
+      const { data } = await supabase
         .from('product_images')
         .select('product_id, image_url, is_primary, sort_order')
         .in('product_id', productIds);
-
-      if (mediaRows) {
-        const grouped = new Map<string, Array<{ product_id: string; image_url: string; is_primary: boolean; sort_order: number }>>();
-        for (const row of mediaRows) {
-          const list = grouped.get(row.product_id) || [];
-          list.push(row);
-          grouped.set(row.product_id, list);
-        }
-        for (const [pid, rows] of Array.from(grouped.entries())) {
-          const sorted = rows.sort((a: { is_primary: boolean; sort_order: number }, b: { is_primary: boolean; sort_order: number }) => {
-            if (a.is_primary && !b.is_primary) return -1;
-            if (!a.is_primary && b.is_primary) return 1;
-            return a.sort_order - b.sort_order;
-          });
-          primaryImages.set(pid, sorted[0].image_url);
-        }
-      }
+      return data;
     } catch {
-      // product_images query failed, continue without images
+      return null;
     }
-  }
-
-  const vendorIds = Array.from(new Set(products.map(p => p.vendor_id).filter(Boolean)));
-  const vendorMap = new Map<string, string>();
-  if (vendorIds.length > 0) {
+  };
+  const loadVendors = async () => {
+    if (vendorIds.length === 0) return null;
     try {
-      const { data: vendors } = await supabase
-        .from('vendors')
-        .select('id, name')
-        .in('id', vendorIds);
-      for (const v of vendors || []) {
-        vendorMap.set(v.id, v.name);
-      }
+      const { data } = await supabase.from('vendors').select('id, name').in('id', vendorIds);
+      return data;
     } catch {
-      // vendors query failed
+      return null;
     }
-  }
-
-  const categoryIds = Array.from(new Set(products.map(p => p.category_id).filter(Boolean)));
-  const categoryMap = new Map<string, { id: string; name: string; slug: string }>();
-  if (categoryIds.length > 0) {
+  };
+  const loadCategories = async () => {
+    if (categoryIds.length === 0) return null;
     try {
-      const { data: cats } = await supabase
+      const { data } = await supabase
         .from('categories')
         .select('id, name, slug')
         .in('id', categoryIds);
-      for (const c of cats || []) {
-        categoryMap.set(c.id, { id: c.id, name: c.name, slug: c.slug });
-      }
+      return data;
     } catch {
-      // categories query failed
+      return null;
     }
+  };
+  const [mediaRows, vendorRows, categoryRows] = await Promise.all([
+    loadMedia(),
+    loadVendors(),
+    loadCategories(),
+  ]);
+
+  if (mediaRows) {
+    const grouped = new Map<string, Array<{ product_id: string; image_url: string; is_primary: boolean; sort_order: number }>>();
+    for (const row of mediaRows) {
+      const list = grouped.get(row.product_id) || [];
+      list.push(row);
+      grouped.set(row.product_id, list);
+    }
+    for (const [pid, rows] of Array.from(grouped.entries())) {
+      const sorted = rows.sort((a, b) => {
+        if (a.is_primary && !b.is_primary) return -1;
+        if (!a.is_primary && b.is_primary) return 1;
+        return a.sort_order - b.sort_order;
+      });
+      primaryImages.set(pid, sorted[0].image_url);
+    }
+  }
+
+  for (const vendor of vendorRows || []) {
+    vendorMap.set(vendor.id, vendor.name);
+  }
+  for (const category of categoryRows || []) {
+    categoryMap.set(category.id, {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    });
   }
 
   const formattedProducts: PublicProduct[] = products.map((p) => ({
@@ -229,12 +278,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   }));
 
   const activeCategory = categories.find(c => c.slug === categorySlug);
+  const pageHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (categorySlug) params.set('category', categorySlug);
+    if (sortParam) params.set('sort', sortParam);
+    if (targetPage > 1) params.set('page', String(targetPage));
+    const queryString = params.toString();
+    return queryString ? `/products?${queryString}` : '/products';
+  };
 
   return (
     <main className="min-h-screen">
       <CatalogHero />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+      <div id="products" className="mx-auto max-w-7xl scroll-mt-24 px-3 py-4 sm:px-6 sm:py-8">
         <Breadcrumbs
           items={[
             { label: 'Catalogue' },
@@ -266,7 +324,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <div className="hidden lg:flex flex-wrap items-center justify-between gap-4 mb-6">
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              <a
+              <Link
                 href="/products"
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   !categorySlug
@@ -275,9 +333,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 }`}
               >
                 Tous
-              </a>
+              </Link>
               {categories.map((cat) => (
-                <a
+                <Link
                   key={cat.id}
                   href={`/products?category=${cat.slug}${searchQuery ? `&q=${searchQuery}` : ''}${sortParam ? `&sort=${sortParam}` : ''}`}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -287,7 +345,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   }`}
                 >
                   {cat.name}
-                </a>
+                </Link>
               ))}
             </div>
           )}
@@ -334,6 +392,30 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               ))}
             </div>
           </div>
+        )}
+
+        {(page > 1 || hasNextPage) && (
+          <nav aria-label="Pagination du catalogue" className="mt-8 flex items-center justify-center gap-4">
+            {page > 1 ? (
+              <Link
+                href={pageHref(page - 1)}
+                className="rounded-lg border border-primary-200 bg-white px-4 py-2 text-sm font-medium text-primary-900 transition-colors hover:bg-primary-50"
+              >
+                Précédent
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-sm text-gray-600">Page {page}</span>
+            {hasNextPage && (
+              <Link
+                href={pageHref(page + 1)}
+                className="rounded-lg border border-primary-200 bg-white px-4 py-2 text-sm font-medium text-primary-900 transition-colors hover:bg-primary-50"
+              >
+                Suivant
+              </Link>
+            )}
+          </nav>
         )}
       </div>
     </main>

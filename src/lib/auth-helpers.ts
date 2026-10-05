@@ -67,7 +67,7 @@ export function isAllowedOrigin(request: Request): boolean {
  * Returns vendorId + admin flag + admin supabase client.
  */
 export async function requireVendorAuth(request: Request): Promise<VendorAuth | AuthError> {
-  const authSupabase = createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const { data: { user }, error: authError } = await authSupabase.auth.getUser();
 
   if (authError || !user) {
@@ -110,7 +110,7 @@ export async function requireVendorAuth(request: Request): Promise<VendorAuth | 
  * Require authenticated user with admin role ONLY.
  */
 export async function requireAdminAuth(request: Request): Promise<AdminAuth | AuthError> {
-  const authSupabase = createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const { data: { user }, error: authError } = await authSupabase.auth.getUser();
 
   if (authError || !user) {
@@ -229,7 +229,7 @@ export function withAdminAuth(handler: AdminHandler) {
     if ('error' in auth) return auth.error;
 
     // 3. Get userId from session (for rate limiting + handler)
-    const authSupabase = createServerSupabaseClient();
+    const authSupabase = await createServerSupabaseClient();
     const { data: { user } } = await authSupabase.auth.getUser();
     if (!user) {
       return NextResponse.json(

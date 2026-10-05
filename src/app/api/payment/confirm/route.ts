@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     // 4. Authentication
     // ------------------------------------------------------------------
 
-    const authSupabase = createServerSupabaseClient();
+    const authSupabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await authSupabase.auth.getUser();
 
     if (authError || !user) {

@@ -7,7 +7,7 @@ export default async function StorySection() {
   let productCount = 500;
 
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const [vendorsResult, productsResult] = await Promise.all([
       supabase.from('vendors').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active').is('deleted_at', null),

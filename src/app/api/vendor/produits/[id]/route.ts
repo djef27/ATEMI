@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { productUpdateSchema } from '@/lib/validations';
-import { slugify } from '@/lib/utils';
+import { slugify, computeDepositAmounts } from '@/lib/utils';
 import {
   requireVendorAuth,
   requireProductOwner,
@@ -105,16 +105,15 @@ export async function PATCH(
     if (updates.stock !== undefined) updateData.stock = updates.stock;
     if (updates.status !== undefined) updateData.status = updates.status;
 
-    // Recalculate deposit/remaining if price or deposit_rate changed
-    if (updates.selling_price !== undefined || updates.deposit_rate !== undefined || updates.supplier_price !== undefined) {
+    // Recalculate deposit/remaining if price or deposit_rate changed.
+    // remaining_amount is what the customer pays on delivery, i.e.
+    // selling_price - deposit — never the supplier cost.
+    if (updates.selling_price !== undefined || updates.deposit_rate !== undefined) {
       const price = updates.selling_price ?? (existing.selling_price as number);
       const rate = updates.deposit_rate ?? (existing.deposit_rate as number);
-      const supplier = updates.supplier_price ?? (existing.supplier_price as number);
       updateData.selling_price = price;
       updateData.deposit_rate = rate;
-      updateData.supplier_price = supplier;
-      updateData.deposit_amount = Math.round(price * rate / 100);
-      updateData.remaining_amount = supplier;
+      Object.assign(updateData, computeDepositAmounts(price, rate));
     }
 
     // Validate category if changed

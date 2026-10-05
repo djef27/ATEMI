@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Printer, CreditCard, Package, Truck, CheckCircle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
@@ -38,9 +38,9 @@ export default function RecuPage() {
   const [loading, setLoading] = useState(false);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [tracking, setTracking] = useState<OrderTracking | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const handleSearch = async (
+  const handleSearch = useCallback(async (
     e: React.FormEvent,
     lookupOrderNumber = orderNumber,
     lookupTrackingToken = trackingToken
@@ -96,7 +96,7 @@ export default function RecuPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, orderNumber, trackingToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -106,10 +106,12 @@ export default function RecuPage() {
 
     setOrderNumber(orderParam);
     setTrackingToken(tokenParam);
+    // orderParam/tokenParam are locally derived from the URL — not reactive deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     void handleSearch({
       preventDefault: () => undefined,
     } as React.FormEvent, orderParam, tokenParam);
-  }, []);
+  }, [handleSearch]);
 
   const handlePrint = () => {
     window.print();

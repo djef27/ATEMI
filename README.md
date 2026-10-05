@@ -44,6 +44,10 @@ cp .env.example .env.local
 | `CINETPAY_SITE_ID` | Identifiant du site CinetPay | Serveur |
 | `CINETPAY_SECRET_KEY` | Clé secrète CinetPay | Serveur |
 | `CINETPAY_ENABLED_METHODS_BJ/CI/TG` | Méthodes activées dans le compte marchand, séparées par des virgules | Serveur |
+| `KKIAPAY_PUBLIC_KEY` | Clé publique KKiaPay transmise au widget web (non secrète) | Serveur |
+| `KKIAPAY_PRIVATE_KEY` | Clé privée KKiaPay (vérification serveur) | Serveur |
+| `KKIAPAY_SECRET_KEY` | Clé secrète KKiaPay (vérification serveur) | Serveur |
+| `KKIAPAY_SANDBOX` | `true` avec les clés Sandbox, `false` avec les clés Live | Serveur |
 | `UPSTASH_REDIS_REST_URL` | URL Upstash Redis (rate limiting production) | Serveur |
 | `UPSTASH_REDIS_REST_TOKEN` | Token Upstash Redis | Serveur |
 | `BREVO_API_KEY` | Clé API Brevo (emails transactionnels) | Serveur |
@@ -93,7 +97,7 @@ Renseigner `WHATSAPP_API_TOKEN` et `WHATSAPP_PROVIDER` dans `.env.local` pour ac
 
 ## Configuration paiement
 
-Pour CinetPay, renseigner `PAYMENT_PROVIDER=cinetpay`, `CINETPAY_API_KEY`, `CINETPAY_SITE_ID` et `CINETPAY_SECRET_KEY`. Le webhook `/api/payment/webhook` vérifie toujours la transaction via l'API CinetPay avant de marquer la commande payée. Les moyens de paiement disponibles par pays sont exposés par `GET /api/payment/methods`. FedaPay reste disponible via `PAYMENT_PROVIDER=fedapay`.
+Pour KKiaPay, renseigner `PAYMENT_PROVIDER=kkiapay`, les trois clés `KKIAPAY_*` et `KKIAPAY_SANDBOX=true` pour le Sandbox. Le widget est chargé après création de la commande, puis chaque transaction est vérifiée côté serveur avec le SDK officiel avant confirmation. Pour CinetPay, renseigner `PAYMENT_PROVIDER=cinetpay`, `CINETPAY_API_KEY`, `CINETPAY_SITE_ID` et `CINETPAY_SECRET_KEY` ; le webhook `/api/payment/webhook` vérifie chaque transaction avec l'API CinetPay. Les moyens disponibles par pays sont exposés par `GET /api/payment/methods`. FedaPay reste disponible via `PAYMENT_PROVIDER=fedapay`.
 
 ## Architecture
 

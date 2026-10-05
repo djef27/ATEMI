@@ -15,9 +15,9 @@ Client → Checkout → POST /api/orders → Order created (pending_payment)
                                             ↓
                                     Client pays via provider
                                             ↓
-                                    Webhook → POST /api/payment/webhook
+                                    Provider notification/callback
                                             ↓
-                                    Signature verification (provider-specific)
+                            Verify with provider API or server SDK
                                             ↓
                                     Amount + currency verification
                                             ↓
@@ -49,13 +49,17 @@ Client → Checkout → POST /api/orders → Order created (pending_payment)
 
 | Variable | Description | Values |
 |----------|-------------|--------|
-| `PAYMENT_PROVIDER` | Payment provider | `mock`, `cinetpay`, `fedapay`, `stripe`, `paystack` |
+| `PAYMENT_PROVIDER` | Payment provider | `mock`, `cinetpay`, `fedapay`, `kkiapay` |
 | `PAYMENT_API_KEY` | Provider public key | From provider dashboard |
 | `PAYMENT_API_SECRET` | Provider secret key | From provider dashboard |
-| `PAYMENT_WEBHOOK_SECRET` | Webhook signing secret | From provider dashboard |
+| `PAYMENT_WEBHOOK_SECRET` | Webhook signing secret (required for FedaPay; KKiaPay is verified server-side) | From provider dashboard |
 | `CINETPAY_API_KEY` | CinetPay API key | From CinetPay dashboard |
 | `CINETPAY_SITE_ID` | CinetPay site identifier | From CinetPay dashboard |
 | `CINETPAY_SECRET_KEY` | CinetPay secret key | From CinetPay dashboard |
+| `KKIAPAY_PUBLIC_KEY` | Public key for the KKiaPay widget | From KKiaPay Developers > API Keys |
+| `KKIAPAY_PRIVATE_KEY` | Private key for server-side verification | From KKiaPay Developers > API Keys |
+| `KKIAPAY_SECRET_KEY` | Secret key for server-side verification | From KKiaPay Developers > API Keys |
+| `KKIAPAY_SANDBOX` | `true` for Sandbox credentials, `false` for Live credentials | `true` / `false` |
 
 ### Rate Limiting (Upstash Redis)
 
@@ -83,7 +87,7 @@ WHATSAPP_PROVIDER=mock
 # Upstash not required (in-memory fallback)
 ```
 
-- Mock provider accepts all webhooks
+- Mock mode has an explicit local-only simulation button
 - No real transactions
 - In-memory rate limiting
 - Console logs for WhatsApp messages
@@ -110,12 +114,43 @@ CinetPay notifications are not trusted as proof of payment. The webhook calls
 `/v2/payment/check` and only confirms the order when the provider reports a
 successful transaction with the expected amount and currency.
 
+### 1.1 Payment Provider (KKiaPay)
+
+1. Create or activate a merchant account at [kkiapay.me](https://kkiapay.me)
+2. Create a Sandbox key set in Developers > API Keys
+3. Configure `PAYMENT_PROVIDER=kkiapay`, `KKIAPAY_PUBLIC_KEY`, `KKIAPAY_PRIVATE_KEY`,
+   `KKIAPAY_SECRET_KEY`, and `KKIAPAY_SANDBOX=true`
+4. Test with the Sandbox phone numbers before switching to Live credentials and
+   setting `KKIAPAY_SANDBOX=false`
+
+**Important:** Adding the KKiaPay keys alone is not enough to launch. Production
+also requires the Supabase project keys and deployed database migrations, a
+public HTTPS `NEXT_PUBLIC_APP_URL`, and Upstash Redis credentials. The app
+deliberately refuses to accept KKiaPay Sandbox credentials in production.
+
+The checkout opens KKiaPay's JavaScript widget. The browser's success event is
+only a notification: `/api/payment/kkiapay/verify` verifies the transaction with
+the official server SDK and checks its transaction ID, amount, currency, order,
+and tracking token before marking the order paid. KKiaPay therefore does not use
+the generic `/api/payment/webhook` endpoint.
+
 ### 2. Supabase
 
 1. Ensure `create_order` function is deployed
 2. Ensure `confirm_deposit_payment` function is deployed
 3. Ensure `idempotency_keys` table exists
 4. Deploy all migrations from `supabase/migrations/`
+5. Before applying the unique provider-reference migration to an existing database,
+   check for duplicate `(provider, provider_transaction_id)` pairs and reconcile
+   any rows it reports:
+
+```sql
+SELECT provider, provider_transaction_id, count(*)
+FROM public.payments
+WHERE provider IS NOT NULL AND provider_transaction_id IS NOT NULL
+GROUP BY provider, provider_transaction_id
+HAVING count(*) > 1;
+```
 
 ### 3. Upstash Redis
 
@@ -146,15 +181,18 @@ WHATSAPP_API_TOKEN=xxx
 
 ## Security Checklist
 
+- [ ] Production uses a patched dependency tree: `npm audit` and
+      `npm audit --omit=dev` both report zero vulnerabilities
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` is set and not a placeholder
-- [ ] `PAYMENT_WEBHOOK_SECRET` is set and matches provider dashboard
+- [ ] Supabase URL and anon key match the production project
+- [ ] KKiaPay public/private/secret keys are Live keys and `KKIAPAY_SANDBOX=false`
+- [ ] `PAYMENT_WEBHOOK_SECRET` is set when the selected provider uses signed webhooks
 - [ ] `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set
 - [ ] `.env.local` is NOT committed to git (check `.gitignore`)
-- [ ] Webhook URL uses HTTPS
-- [ ] Webhook signature verification is enabled
+- [ ] Provider callback URL uses HTTPS when the selected provider uses webhooks
+- [ ] Provider payments are verified server-side before orders are confirmed
 - [ ] No secrets are exposed in frontend code
 - [ ] `NEXT_PUBLIC_` prefix only on non-sensitive variables
-- [ ] Payment confirm endpoint requires admin authentication
 - [ ] Rate limiting is active on financial endpoints
 - [ ] Idempotency is active on payment confirmation
 
@@ -165,10 +203,12 @@ WHATSAPP_API_TOKEN=xxx
 ### Tests to Run
 
 ```bash
-# Run all tests
-npx jest
-
-# Expected: 195+ tests passing
+npm run lint
+npm run typecheck
+npm test -- --ci --runInBand
+npm run build
+npm audit
+npm audit --omit=dev
 ```
 
 ### Manual Verification
@@ -203,10 +243,12 @@ WHERE proname = 'confirm_deposit_payment';
 
 ## Switching from Mock to Production
 
-1. Set `PAYMENT_PROVIDER=fedapay` (or your provider)
-2. Set `PAYMENT_API_KEY`, `PAYMENT_API_SECRET`, `PAYMENT_WEBHOOK_SECRET`
+1. Set `PAYMENT_PROVIDER=kkiapay` (or `cinetpay` / `fedapay`)
+2. For KKiaPay, set all three `KKIAPAY_*_KEY` values and `KKIAPAY_SANDBOX=false`;
+   for FedaPay, set `PAYMENT_API_KEY`, `PAYMENT_API_SECRET`, and `PAYMENT_WEBHOOK_SECRET`
 3. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-4. Deploy webhook URL to provider dashboard
+4. Configure the provider webhook URL when using CinetPay or FedaPay. KKiaPay
+   confirms transactions through its server SDK after the widget success event.
 5. Test with provider's sandbox/test mode first
 6. Switch to live keys when ready
 
@@ -245,14 +287,9 @@ WHERE proname = 'confirm_deposit_payment';
 - Event parsing: `entity` field is JSON string (must parse twice)
 - Webhook package: `fedapay` npm package
 
-### Stripe
-- Amount: cents (divide by 100)
-- Currency: ISO string
-- Signature header: `stripe-signature`
-- Event parsing: `data.object` shape
-
-### Paystack
-- Amount: kobo (divide by 100)
-- Currency: ISO string
-- Signature header: `x-paystack-signature`
-- Event parsing: `data.object` shape
+### KKiaPay
+- Amount: XOF integer (no minor-unit division)
+- Client: official JavaScript widget, public key only
+- Server: `@kkiapay-org/nodejs-sdk` `verify(transactionId)` using private and secret keys
+- Verification endpoint: `POST /api/payment/kkiapay/verify`
+- No KKiaPay webhook is trusted by the generic webhook route

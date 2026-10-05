@@ -67,7 +67,29 @@ describe('Payment Provider Abstraction', () => {
       resetPaymentConfig();
     });
 
-    it('defaults to mock for unsupported provider', async () => {
+    it('returns the KKiaPay adapter when PAYMENT_PROVIDER=kkiapay', async () => {
+      process.env.PAYMENT_PROVIDER = 'kkiapay';
+      process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
+      process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
+      process.env.KKIAPAY_SECRET_KEY = 'secret-test';
+      process.env.KKIAPAY_SANDBOX = 'true';
+      const { getPaymentProvider, resetPaymentProvider } = await import('@/lib/payment/providers');
+      const { resetPaymentConfig } = await import('@/lib/payment/config');
+
+      resetPaymentConfig();
+      resetPaymentProvider();
+
+      expect(getPaymentProvider().name).toBe('kkiapay');
+
+      resetPaymentConfig();
+      resetPaymentProvider();
+      delete process.env.KKIAPAY_PUBLIC_KEY;
+      delete process.env.KKIAPAY_PRIVATE_KEY;
+      delete process.env.KKIAPAY_SECRET_KEY;
+      delete process.env.KKIAPAY_SANDBOX;
+    });
+
+    it('rejects an unsupported provider instead of silently using mock', async () => {
       process.env.PAYMENT_PROVIDER = 'unsupported';
       const { getPaymentProvider, resetPaymentProvider } = await import('@/lib/payment/providers');
       const { resetPaymentConfig } = await import('@/lib/payment/config');
@@ -75,9 +97,7 @@ describe('Payment Provider Abstraction', () => {
       resetPaymentConfig();
       resetPaymentProvider();
 
-      // Unsupported provider falls back to mock
-      const provider = getPaymentProvider();
-      expect(provider.name).toBe('mock');
+      expect(() => getPaymentProvider()).toThrow('PAYMENT_PROVIDER inconnu');
 
       resetPaymentConfig();
     });
@@ -113,6 +133,62 @@ describe('Payment Provider Abstraction', () => {
       expect(config.apiKey).toBe('pk_test_xxx');
 
       resetPaymentConfig();
+    });
+
+    it('loads KKiaPay credentials without exposing private keys as the public key', async () => {
+      process.env.PAYMENT_PROVIDER = 'kkiapay';
+      process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
+      process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
+      process.env.KKIAPAY_SECRET_KEY = 'secret-test';
+      process.env.KKIAPAY_SANDBOX = 'true';
+      const { getPaymentConfig, resetPaymentConfig } = await import('@/lib/payment/config');
+
+      resetPaymentConfig();
+      const config = getPaymentConfig();
+
+      expect(config).toMatchObject({
+        provider: 'kkiapay',
+        apiKey: 'public-test',
+        privateKey: 'private-test',
+        secretKey: 'secret-test',
+        sandbox: true,
+      });
+
+      resetPaymentConfig();
+      delete process.env.KKIAPAY_PUBLIC_KEY;
+      delete process.env.KKIAPAY_PRIVATE_KEY;
+      delete process.env.KKIAPAY_SECRET_KEY;
+      delete process.env.KKIAPAY_SANDBOX;
+    });
+
+    it('rejects KKiaPay Sandbox credentials in production', async () => {
+      const originalEnv = {
+        NODE_ENV: process.env.NODE_ENV,
+        PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+        KKIAPAY_PUBLIC_KEY: process.env.KKIAPAY_PUBLIC_KEY,
+        KKIAPAY_PRIVATE_KEY: process.env.KKIAPAY_PRIVATE_KEY,
+        KKIAPAY_SECRET_KEY: process.env.KKIAPAY_SECRET_KEY,
+        KKIAPAY_SANDBOX: process.env.KKIAPAY_SANDBOX,
+      };
+      process.env.NODE_ENV = 'production';
+      process.env.PAYMENT_PROVIDER = 'kkiapay';
+      process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
+      process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
+      process.env.KKIAPAY_SECRET_KEY = 'secret-test';
+      process.env.KKIAPAY_SANDBOX = 'true';
+
+      const { getPaymentConfig, resetPaymentConfig } = await import('@/lib/payment/config');
+      resetPaymentConfig();
+
+      try {
+        expect(() => getPaymentConfig()).toThrow('KKiaPay Sandbox ne peuvent pas être utilisées en production');
+      } finally {
+        resetPaymentConfig();
+        for (const [name, value] of Object.entries(originalEnv)) {
+          if (value === undefined) delete process.env[name];
+          else process.env[name] = value;
+        }
+      }
     });
   });
 

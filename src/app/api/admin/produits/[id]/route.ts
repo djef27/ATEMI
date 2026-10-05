@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { productUpdateSchema } from '@/lib/validations';
-import { slugify } from '@/lib/utils';
+import { slugify, computeDepositAmounts } from '@/lib/utils';
 import { withAdminAuth } from '@/lib/auth-helpers';
 
 // ---------------------------------------------------------------------------
@@ -98,14 +98,12 @@ export const PATCH = withAdminAuth(async (request, { supabase, params }) => {
   }
 
   // Recompute deposit / remaining when price or rate changes
-  if (updates.selling_price !== undefined || updates.deposit_rate !== undefined || updates.supplier_price !== undefined) {
+  if (updates.selling_price !== undefined || updates.deposit_rate !== undefined) {
     const price = updates.selling_price ?? (existing.selling_price as number);
     const rate = updates.deposit_rate ?? (existing.deposit_rate as number);
     updateData.selling_price = price;
     updateData.deposit_rate = rate;
-    if (updates.supplier_price !== undefined) updateData.supplier_price = updates.supplier_price;
-    updateData.deposit_amount = Math.round(price * rate / 100);
-    updateData.remaining_amount = price - Math.round(price * rate / 100);
+    Object.assign(updateData, computeDepositAmounts(price, rate));
   }
 
   // Auto-status on stock transitions

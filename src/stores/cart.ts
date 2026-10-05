@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useEffect, useState } from 'react';
+import { computeDepositAmounts } from '@/lib/utils';
 import type { CartItem } from '@/types';
 
 interface CartStore {
@@ -65,15 +66,18 @@ export const useCart = create<CartStore>()(
 
       getDeposit: () => {
         return get().items.reduce(
-          (sum, item) => sum + Math.round(item.selling_price * (item.deposit_rate ?? 50) / 100) * item.quantity,
+          (sum, item) => sum + computeDepositAmounts(item.selling_price, item.deposit_rate).deposit_amount * item.quantity,
           0
         );
       },
 
       getRemaining: () => {
-        return get().items.reduce((sum, item) => {
-          return sum + item.remaining_amount * item.quantity;
-        }, 0);
+        // Computed from price + rate (same formula as create_order) rather than
+        // from the stored snapshot, which may be stale or wrong.
+        return get().items.reduce(
+          (sum, item) => sum + computeDepositAmounts(item.selling_price, item.deposit_rate).remaining_amount * item.quantity,
+          0
+        );
       },
 
       getItemCount: () => {
@@ -110,11 +114,10 @@ export function useHydratedCart() {
   }, []);
 
   const items = useCart((s) => (hydrated ? s.items : []));
-  const getItemCount = useCart((s) => s.getItemCount);
 
   return {
     items,
-    itemCount: hydrated ? getItemCount() : 0,
+    itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     hydrated,
   };
 }

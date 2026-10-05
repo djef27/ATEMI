@@ -194,8 +194,12 @@ begin
     v_total :=
         v_subtotal + v_delivery_fee;
 
+    -- FIX (audit 2026-09-30): delivery_balance DOIT inclure les frais de
+    -- livraison, sinon total_amount != deposit_amount + delivery_balance et la
+    -- contrainte orders_total_split_check rejette TOUTE commande livree.
+    -- Cf. 20260902100000_fix_delivery_balance_check_constraint.sql.
     v_delivery_balance :=
-        v_subtotal - v_deposit;
+        v_total - v_deposit;
 
     v_order_number :=
         'CMD-' ||

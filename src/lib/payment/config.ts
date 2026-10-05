@@ -6,14 +6,17 @@
  * silent failure.
  */
 
-export type PaymentProviderName = 'mock' | 'cinetpay' | 'fedapay' | 'stripe' | 'paystack';
+export type PaymentProviderName = 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay';
 
 export interface PaymentConfig {
   provider: PaymentProviderName;
   apiKey: string;
   apiSecret: string;
+  privateKey: string;
+  secretKey: string;
   webhookSecret: string;
   siteId: string;
+  sandbox: boolean;
   isProduction: boolean;
   isMock: boolean;
 }
@@ -31,20 +34,18 @@ function requireEnv(name: string, fallback?: string): string {
 
 function getProviderName(): PaymentProviderName {
   const raw = process.env.PAYMENT_PROVIDER?.toLowerCase().trim();
-  if (raw === 'cinetpay' || raw === 'fedapay' || raw === 'stripe' || raw === 'paystack') return raw;
+  if (raw === 'cinetpay' || raw === 'fedapay' || raw === 'kkiapay') return raw;
   if (process.env.NODE_ENV === 'production' && (!raw || raw === 'mock')) {
     throw new Error(
       '[PAYMENT CONFIG] PAYMENT_PROVIDER doit être configuré avec un prestataire réel en production. ' +
       'Configurez un prestataire de paiement réel.'
     );
   }
-  if (process.env.NODE_ENV === 'production' && raw) {
-    throw new Error(
-      `[PAYMENT CONFIG] PAYMENT_PROVIDER inconnu: "${raw}". ` +
-      `Providers valides: cinetpay, fedapay, stripe, paystack`
-    );
-  }
-  return 'mock';
+  if (raw === 'mock' || !raw) return 'mock';
+  throw new Error(
+    `[PAYMENT CONFIG] PAYMENT_PROVIDER inconnu: "${raw}". ` +
+    `Fournisseurs valides: cinetpay, fedapay, kkiapay`
+  );
 }
 
 /**
@@ -59,31 +60,54 @@ export function getPaymentConfig(): PaymentConfig {
   const isProduction = process.env.NODE_ENV === 'production';
   const provider = getProviderName();
   const isMock = provider === 'mock';
+  const sandbox = provider === 'kkiapay'
+    ? process.env.KKIAPAY_SANDBOX?.trim().toLowerCase() === 'true'
+    : false;
 
   // In production, all secrets are required for real providers
   if (isProduction && !isMock) {
+    if (provider === 'kkiapay' && sandbox) {
+      throw new Error(
+        '[PAYMENT CONFIG] Les clés KKiaPay Sandbox ne peuvent pas être utilisées en production. ' +
+        'Configurez les clés Live et définissez KKIAPAY_SANDBOX=false.'
+      );
+    }
+
     const apiKey = provider === 'cinetpay'
       ? requireEnv('CINETPAY_API_KEY', process.env.PAYMENT_API_KEY)
-      : requireEnv('PAYMENT_API_KEY');
+      : provider === 'kkiapay'
+        ? requireEnv('KKIAPAY_PUBLIC_KEY')
+        : requireEnv('PAYMENT_API_KEY');
     const apiSecret = provider === 'cinetpay'
       ? requireEnv('CINETPAY_SECRET_KEY', process.env.PAYMENT_API_SECRET)
-      : requireEnv('PAYMENT_API_SECRET');
+      : provider === 'kkiapay'
+        ? requireEnv('KKIAPAY_PRIVATE_KEY')
+        : requireEnv('PAYMENT_API_SECRET');
+    const privateKey = provider === 'kkiapay' ? apiSecret : '';
+    const secretKey = provider === 'kkiapay' ? requireEnv('KKIAPAY_SECRET_KEY') : '';
     const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || '';
     const siteId = provider === 'cinetpay' ? requireEnv('CINETPAY_SITE_ID') : '';
 
-    _config = { provider, apiKey, apiSecret, webhookSecret, siteId, isProduction, isMock };
+    _config = { provider, apiKey, apiSecret, privateKey, secretKey, webhookSecret, siteId, sandbox, isProduction, isMock };
   } else {
     // Development/test: allow missing secrets for mock
     _config = {
       provider,
       apiKey: provider === 'cinetpay'
         ? process.env.CINETPAY_API_KEY || process.env.PAYMENT_API_KEY || ''
-        : process.env.PAYMENT_API_KEY || '',
+        : provider === 'kkiapay'
+          ? process.env.KKIAPAY_PUBLIC_KEY || ''
+          : process.env.PAYMENT_API_KEY || '',
       apiSecret: provider === 'cinetpay'
         ? process.env.CINETPAY_SECRET_KEY || process.env.PAYMENT_API_SECRET || ''
-        : process.env.PAYMENT_API_SECRET || '',
+        : provider === 'kkiapay'
+          ? process.env.KKIAPAY_PRIVATE_KEY || ''
+          : process.env.PAYMENT_API_SECRET || '',
+      privateKey: process.env.KKIAPAY_PRIVATE_KEY || '',
+      secretKey: process.env.KKIAPAY_SECRET_KEY || '',
       webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || '',
       siteId: process.env.CINETPAY_SITE_ID || '',
+      sandbox,
       isProduction,
       isMock,
     };

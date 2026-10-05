@@ -7,31 +7,75 @@ import { ShoppingCart, Loader2 } from 'lucide-react';
 import type { Order } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import OrderStatusSelect from '@/components/order-status-select';
-import { VENDOR_UPDATEABLE_STATUSES, isOrderStatusTerminal } from '@/lib/order-status';
+import { VENDOR_UPDATEABLE_STATUSES, canVendorUpdateStatus, getOrderStatusMeta } from '@/lib/order-status';
 import type { OrderStatus } from '@/types';
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  pending_payment: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700' },
-  confirmed: { label: 'Confirmée', color: 'bg-green-100 text-green-700' },
-  vendor_processing: { label: 'En préparation', color: 'bg-blue-100 text-blue-700' },
-  ready_for_delivery: { label: 'Prête', color: 'bg-blue-100 text-blue-700' },
-  delivered: { label: 'Livrée', color: 'bg-green-100 text-green-700' },
-  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700' },
-  failed: { label: 'Échouée', color: 'bg-red-100 text-red-700' },
+type VendorOrderTotals = {
+  quantity: number;
+  subtotal: number;
+  deposit: number;
+  remaining: number;
 };
 
 export default function VendorCommandesPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [totals, setTotals] = useState<Record<string, VendorOrderTotals>>({});
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   const fetchOrders = useCallback(async (vendorId: string) => {
-    const { data } = await supabase
+    // Les lignes de commande (order_items) portent le vendor_id réel, y compris
+    // pour les commandes multi-vendeurs et les commandes antérieures au
+    // backfill de orders.vendor_id : on s'appuie donc dessus, et non sur
+    // orders.vendor_id qui peut être NULL.
+    const { data: itemRows, error: itemsError } = await supabase
+      .from('order_items')
+      .select('order_id, quantity, line_total, deposit_amount_snapshot, remaining_amount_snapshot')
+      .eq('vendor_id', vendorId);
+
+    if (itemsError) {
+      console.error('[VENDOR_ORDERS]', itemsError.message);
+      setOrders([]);
+      setTotals({});
+      setLoading(false);
+      return;
+    }
+
+    // Agrégation par commande : un vendeur ne doit jamais voir les montants
+    // d'un autre vendeur sur une commande multi-vendeurs.
+    const byOrder: Record<string, VendorOrderTotals> = {};
+    for (const row of itemRows || []) {
+      if (!row.order_id) continue;
+      const current = byOrder[row.order_id] || {
+        quantity: 0,
+        subtotal: 0,
+        deposit: 0,
+        remaining: 0,
+      };
+      current.quantity += row.quantity ?? 0;
+      current.subtotal += Number(row.line_total ?? 0);
+      current.deposit += Number(row.deposit_amount_snapshot ?? 0);
+      current.remaining += Number(row.remaining_amount_snapshot ?? 0);
+      byOrder[row.order_id] = current;
+    }
+    setTotals(byOrder);
+
+    const orderIds = Object.keys(byOrder);
+    if (orderIds.length === 0) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('vendor_id', vendorId)
+      .in('id', orderIds)
       .order('created_at', { ascending: false });
+
+    if (error) console.error('[VENDOR_ORDERS]', error.message);
 
     setOrders((data as Order[]) || []);
     setLoading(false);
@@ -52,6 +96,7 @@ export default function VendorCommandesPage() {
         return;
       }
 
+      setVendorId(vendor.id);
       fetchOrders(vendor.id);
     };
 
@@ -82,10 +127,14 @@ export default function VendorCommandesPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
-            const status = statusLabels[order.status] || statusLabels.pending_payment;
-            const vendorUpdatable =
-              order.status !== 'pending_payment' &&
-              !isOrderStatusTerminal(order.status as OrderStatus);
+            const status = getOrderStatusMeta(order.status);
+            const vendorUpdatable = canVendorUpdateStatus(order.status as OrderStatus);
+            const own = totals[order.id] || {
+              quantity: 0,
+              subtotal: 0,
+              deposit: 0,
+              remaining: 0,
+            };
             return (
               <div key={order.id} className="bg-white rounded-2xl border border-primary-100 shadow-sm p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-4">
@@ -94,13 +143,13 @@ export default function VendorCommandesPage() {
                       <span className="font-mono text-sm font-semibold text-gray-900">
                         {order.order_number}
                       </span>
-                      {vendorUpdatable ? (
+                      {vendorUpdatable && vendorId ? (
                         <OrderStatusSelect
                           orderId={order.id}
                           value={order.status}
                           statuses={VENDOR_UPDATEABLE_STATUSES}
                           endpoint="/api/vendor/orders"
-                          onChanged={() => fetchOrders(String(order.vendor_id))}
+                          onChanged={() => fetchOrders(vendorId)}
                         />
                       ) : (
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
@@ -112,6 +161,7 @@ export default function VendorCommandesPage() {
                       {order.customer_name}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
+                      {own.quantity} article{own.quantity > 1 ? 's' : ''} ·{' '}
                       {new Date(order.created_at).toLocaleDateString('fr-FR', {
                         day: 'numeric',
                         month: 'short',
@@ -120,8 +170,9 @@ export default function VendorCommandesPage() {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-gray-900">{formatPrice(order.total_amount)}</p>
-                    <p className="text-xs text-primary-600">Acompte: {formatPrice(order.deposit_amount)}</p>
+                    <p className="font-semibold text-gray-900">{formatPrice(own.subtotal)}</p>
+                    <p className="text-xs text-primary-600">Acompte: {formatPrice(own.deposit)}</p>
+                    <p className="text-xs text-gray-500">Solde: {formatPrice(own.remaining)}</p>
                   </div>
                 </div>
               </div>

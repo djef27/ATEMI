@@ -31,7 +31,7 @@ export interface HomeProduct {
 // ============================================
 
 async function fetchPrimaryImages(productIds: string[]): Promise<Map<string, string>> {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const images = new Map<string, string>();
 
   if (productIds.length === 0) return images;
@@ -66,139 +66,154 @@ async function fetchPrimaryImages(productIds: string[]): Promise<Map<string, str
 // ============================================
 
 export async function getHomeCategories(): Promise<HomeCategory[]> {
-  const supabase = createServerSupabaseClient();
+  try {
+    const supabase = await createServerSupabaseClient();
 
-  const { data, error } = await supabase
-    .from('categories')
-    .select('id, name, slug, image_url')
-    .eq('is_active', true)
-    .order('name');
+    const { data, error } = await supabase
+      .from('categories')
+      .select('id, name, slug, image_url')
+      .eq('is_active', true)
+      .order('name');
 
-  if (error) {
-    console.error('getHomeCategories error:', error);
+    if (error) {
+      console.error('getHomeCategories error:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('getHomeCategories unavailable:', error instanceof Error ? error.message : error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getNewProducts(limit = 8): Promise<HomeProduct[]> {
-  const supabase = createServerSupabaseClient();
+  try {
+    const supabase = await createServerSupabaseClient();
 
-  const { data: products, error } = await supabase
-    .from('products')
-    .select('id, name, slug, selling_price, deposit_rate, deposit_amount, stock, created_at, vendor_id, category_id')
-    .eq('status', 'active')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error || !products || products.length === 0) {
-    return [];
-  }
-
-  const productIds = products.map(p => p.id);
-
-  // Fetch images + vendors in parallel
-  const vendorIds = Array.from(new Set(products.map(p => p.vendor_id).filter(Boolean)));
-  const [primaryImages, vendorData] = await Promise.all([
-    fetchPrimaryImages(productIds),
-    vendorIds.length > 0
-      ? supabase.from('vendors').select('id, name, city').in('id', vendorIds)
-      : Promise.resolve({ data: null }),
-  ]);
-
-  const vendorMap = new Map<string, { name: string; city: string }>();
-  for (const v of vendorData.data || []) {
-    vendorMap.set(v.id, { name: v.name, city: v.city });
-  }
-
-  return products.map(p => {
-    const v = vendorMap.get(p.vendor_id);
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      selling_price: p.selling_price,
-      deposit_rate: p.deposit_rate,
-      deposit_amount: p.deposit_amount,
-      stock: p.stock,
-      vendor_name: v?.name ?? null,
-      vendor_city: v?.city ?? null,
-      image_url: primaryImages.get(p.id) ?? null,
-      category_slug: null,
-      created_at: p.created_at,
-    };
-  });
-}
-
-export async function getBestSellers(limit = 8): Promise<HomeProduct[]> {
-  const supabase = createServerSupabaseClient();
-
-  // Fetch order_items + products in parallel
-  const [orderItemsResult, productsResult] = await Promise.all([
-    supabase.from('order_items').select('product_id').limit(2000),
-    supabase
+    const { data: products, error } = await supabase
       .from('products')
       .select('id, name, slug, selling_price, deposit_rate, deposit_amount, stock, created_at, vendor_id, category_id')
       .eq('status', 'active')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(50),
-  ]);
+      .limit(limit);
 
-  // Count order_items per product for popularity ranking
-  let counts = new Map<string, number>();
-  for (const item of orderItemsResult.data || []) {
-    counts.set(item.product_id, (counts.get(item.product_id) || 0) + 1);
-  }
+    if (error || !products || products.length === 0) {
+      return [];
+    }
 
-  const products = productsResult.data;
+    const productIds = products.map(p => p.id);
 
-  if (productsResult.error || !products || products.length === 0) {
+    // Fetch images + vendors in parallel
+    const vendorIds = Array.from(new Set(products.map(p => p.vendor_id).filter(Boolean)));
+    const [primaryImages, vendorData] = await Promise.all([
+      fetchPrimaryImages(productIds),
+      vendorIds.length > 0
+        ? supabase.from('vendors').select('id, name, city').in('id', vendorIds)
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const vendorMap = new Map<string, { name: string; city: string }>();
+    for (const v of vendorData.data || []) {
+      vendorMap.set(v.id, { name: v.name, city: v.city });
+    }
+
+    return products.map(p => {
+      const v = vendorMap.get(p.vendor_id);
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        selling_price: p.selling_price,
+        deposit_rate: p.deposit_rate,
+        deposit_amount: p.deposit_amount,
+        stock: p.stock,
+        vendor_name: v?.name ?? null,
+        vendor_city: v?.city ?? null,
+        image_url: primaryImages.get(p.id) ?? null,
+        category_slug: null,
+        created_at: p.created_at,
+      };
+    });
+  } catch (error) {
+    console.error('getNewProducts unavailable:', error instanceof Error ? error.message : error);
     return [];
   }
+}
 
-  // Sort by order_item count (desc), fallback to created_at
-  const sorted = [...products].sort((a, b) => {
-    const countA = counts.get(a.id) || 0;
-    const countB = counts.get(b.id) || 0;
-    if (countB !== countA) return countB - countA;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+export async function getBestSellers(limit = 8): Promise<HomeProduct[]> {
+  try {
+    const supabase = await createServerSupabaseClient();
 
-  const top = sorted.slice(0, limit);
-  const productIds = top.map(p => p.id);
+    // Fetch order_items + products in parallel
+    const [orderItemsResult, productsResult] = await Promise.all([
+      supabase.from('order_items').select('product_id').limit(2000),
+      supabase
+        .from('products')
+        .select('id, name, slug, selling_price, deposit_rate, deposit_amount, stock, created_at, vendor_id, category_id')
+        .eq('status', 'active')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ]);
 
-  // Fetch images + vendors in parallel
-  const vendorIds = Array.from(new Set(top.map(p => p.vendor_id).filter(Boolean)));
-  const [primaryImages, vendorData] = await Promise.all([
-    fetchPrimaryImages(productIds),
-    vendorIds.length > 0
-      ? supabase.from('vendors').select('id, name, city').in('id', vendorIds)
-      : Promise.resolve({ data: null }),
-  ]);
+    // Count order_items per product for popularity ranking
+    let counts = new Map<string, number>();
+    for (const item of orderItemsResult.data || []) {
+      counts.set(item.product_id, (counts.get(item.product_id) || 0) + 1);
+    }
 
-  const vendorMap = new Map<string, { name: string; city: string }>();
-  for (const v of vendorData.data || []) {
-    vendorMap.set(v.id, { name: v.name, city: v.city });
+    const products = productsResult.data;
+
+    if (productsResult.error || !products || products.length === 0) {
+      return [];
+    }
+
+    // Sort by order_item count (desc), fallback to created_at
+    const sorted = [...products].sort((a, b) => {
+      const countA = counts.get(a.id) || 0;
+      const countB = counts.get(b.id) || 0;
+      if (countB !== countA) return countB - countA;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const top = sorted.slice(0, limit);
+    const productIds = top.map(p => p.id);
+
+    // Fetch images + vendors in parallel
+    const vendorIds = Array.from(new Set(top.map(p => p.vendor_id).filter(Boolean)));
+    const [primaryImages, vendorData] = await Promise.all([
+      fetchPrimaryImages(productIds),
+      vendorIds.length > 0
+        ? supabase.from('vendors').select('id, name, city').in('id', vendorIds)
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const vendorMap = new Map<string, { name: string; city: string }>();
+    for (const v of vendorData.data || []) {
+      vendorMap.set(v.id, { name: v.name, city: v.city });
+    }
+
+    return top.map(p => {
+      const v = vendorMap.get(p.vendor_id);
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        selling_price: p.selling_price,
+        deposit_rate: p.deposit_rate,
+        deposit_amount: p.deposit_amount,
+        stock: p.stock,
+        vendor_name: v?.name ?? null,
+        vendor_city: v?.city ?? null,
+        image_url: primaryImages.get(p.id) ?? null,
+        category_slug: null,
+        created_at: p.created_at,
+      };
+    });
+  } catch (error) {
+    console.error('getBestSellers unavailable:', error instanceof Error ? error.message : error);
+    return [];
   }
-
-  return top.map(p => {
-    const v = vendorMap.get(p.vendor_id);
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      selling_price: p.selling_price,
-      deposit_rate: p.deposit_rate,
-      deposit_amount: p.deposit_amount,
-      stock: p.stock,
-      vendor_name: v?.name ?? null,
-      vendor_city: v?.city ?? null,
-      image_url: primaryImages.get(p.id) ?? null,
-      category_slug: null,
-      created_at: p.created_at,
-    };
-  });
 }

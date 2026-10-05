@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
     const { items } = parsed.data;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const issues: Array<{ product_id: string; name: string; requested: number; available: number }> = [];
 
     for (const item of items) {

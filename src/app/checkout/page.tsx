@@ -7,12 +7,19 @@ import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { normalizeCity } from '@/lib/delivery-zones';
 
 interface DeliveryZone {
   id: string;
   name: string;
   fee: number;
   city: string;
+}
+
+interface CityInfo {
+  name: string;
+  min_fee: number;
+  zones_count: number;
 }
 
 interface StockIssue {
@@ -28,7 +35,7 @@ interface PaymentMethod {
 }
 
 export default function CheckoutPage() {
-  const { items, getSubtotal, getDeposit, getRemaining, getVendorId, clearCart } = useCart();
+  const { items, getSubtotal, getDeposit, getRemaining, getVendorId } = useCart();
   const { user, profile } = useAuth();
   const router = useRouter();
 
@@ -45,6 +52,7 @@ export default function CheckoutPage() {
   const [deliveryRequired, setDeliveryRequired] = useState(true);
   const [deliveryZoneId, setDeliveryZoneId] = useState<string | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+  const [availableCities, setAvailableCities] = useState<CityInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
@@ -61,6 +69,38 @@ export default function CheckoutPage() {
     if (user?.email && !email) setEmail(user.email);
   }, [profile, user, fullName, phone, email]);
 
+  const knownCity = availableCities.find(
+    (c) => normalizeCity(c.name) === normalizeCity(city)
+  );
+
+  // Load the list of deliverable cities for the address autocomplete
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/delivery-zones?cities=1&country=${encodeURIComponent(country)}`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setAvailableCities(data.data);
+        } else {
+          setAvailableCities([]);
+        }
+      })
+      .catch(() => {
+        setAvailableCities([]);
+      });
+    return () => controller.abort();
+  }, [country]);
+
+  // Auto-correct the city once fully typed (case / accents / spaces)
+  useEffect(() => {
+    const trimmed = city.trim();
+    if (!trimmed || availableCities.length === 0) return;
+    const matches = availableCities.filter((c) => normalizeCity(c.name) === normalizeCity(trimmed));
+    if (matches.length === 1 && matches[0].name !== trimmed) {
+      setCity(matches[0].name);
+    }
+  }, [city, availableCities]);
+
   // Fetch delivery zones
   useEffect(() => {
     if (!deliveryRequired || !city.trim()) {
@@ -70,14 +110,17 @@ export default function CheckoutPage() {
     }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      fetch(`/api/delivery-zones?city=${encodeURIComponent(city.trim())}`, { signal: controller.signal })
+      fetch(`/api/delivery-zones?city=${encodeURIComponent(city.trim())}&country=${encodeURIComponent(country)}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
           if (data.success && Array.isArray(data.data)) {
             setDeliveryZones(data.data);
-            if (data.data.length === 1) {
-              setDeliveryZoneId(data.data[0].id);
-            }
+            setDeliveryZoneId((prev) => {
+              if (prev && !data.data.some((z: DeliveryZone) => z.id === prev)) {
+                return data.data.length === 1 ? data.data[0].id : null;
+              }
+              return prev || (data.data.length === 1 ? data.data[0].id : null);
+            });
           } else {
             setDeliveryZones([]);
             setDeliveryZoneId(null);
@@ -92,7 +135,7 @@ export default function CheckoutPage() {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [city, deliveryRequired]);
+  }, [city, country, deliveryRequired]);
 
   // Validate stock on mount
   useEffect(() => {
@@ -178,6 +221,10 @@ export default function CheckoutPage() {
     if (!phone.trim()) { setError('Le numéro de téléphone est requis'); return; }
     if (deliveryRequired && !address.trim()) { setError('L\'adresse de livraison est requise'); return; }
     if (deliveryRequired && !city.trim()) { setError('La ville est requise'); return; }
+    if (deliveryRequired && !availableCities.some((c) => normalizeCity(c.name) === normalizeCity(city))) {
+      setError('Cette ville n\'est pas couverte pour la livraison dans ce pays. Modifiez la ville ou choisissez le retrait.');
+      return;
+    }
     if (deliveryRequired && deliveryZones.length > 0 && !deliveryZoneId) { setError('Veuillez sélectionner une zone de livraison'); return; }
     if (deliveryRequired && city.trim() && deliveryZones.length === 0 && !deliveryZoneId) { setError('Aucune zone de livraison disponible pour cette ville. Modifiez la ville ou choisissez le retrait.'); return; }
     if (stockIssues.length > 0) { setError('Certains articles ne sont plus disponibles en quantité suffisante. Modifiez votre panier.'); return; }
@@ -224,31 +271,10 @@ export default function CheckoutPage() {
       if (data && typeof data === 'object' && 'order_id' in data) {
         const orderNum = (data as { order_number: string }).order_number;
         const trackingToken = (data as { tracking_token: string }).tracking_token;
-        const paymentResponse = await fetch('/api/payment/initiate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            order_number: orderNum,
-            tracking_token: trackingToken,
-            country,
-            payment_method: paymentMethod,
-          }),
-        });
-        const paymentResult = await paymentResponse.json();
-
-        if (!paymentResponse.ok || !paymentResult.success) {
-          setError(paymentResult.error || 'Impossible de démarrer le paiement');
-          setLoading(false);
-          return;
-        }
-
-        clearCart();
-        if (paymentResult.payment_url) {
-          window.location.assign(paymentResult.payment_url);
-          return;
-        }
-
-        router.replace(`/recu?order=${encodeURIComponent(orderNum)}&token=${encodeURIComponent(trackingToken)}`);
+        router.replace(
+          `/paiement?order=${encodeURIComponent(orderNum)}&token=${encodeURIComponent(trackingToken)}` +
+          `&country=${encodeURIComponent(country)}&payment_method=${encodeURIComponent(paymentMethod)}`
+        );
       } else {
         setError('Réponse inattendue du serveur');
         setLoading(false);
@@ -392,15 +418,25 @@ export default function CheckoutPage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-                    <input id="city" type="text" required value={city} onChange={(e) => setCity(e.target.value)}
+                    <input id="city" type="text" required list="delivery-cities" value={city} onChange={(e) => setCity(e.target.value)}
                       className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
-                      placeholder="Cotonou" />
+                      placeholder="Choisissez votre ville…" />
+                    <datalist id="delivery-cities">
+                      {availableCities.map((c) => (
+                        <option key={c.name} value={c.name} />
+                      ))}
+                    </datalist>
+                    {knownCity && deliveryZones.length > 0 && (
+                      <p className="mt-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-2.5">
+                        Livraison disponible à {knownCity.name} — à partir de {formatPrice(knownCity.min_fee)} selon la zone.
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Adresse *</label>
-                    <input id="address" type="text" required value={address} onChange={(e) => setAddress(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
-                      placeholder="Adresse complète" />
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Adresse complète *</label>
+                    <textarea id="address" required rows={2} value={address} onChange={(e) => setAddress(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 resize-none"
+                      placeholder="Rue, quartier, point de repère (ex: en face de la pharmacie du quartier)" />
                   </div>
                   {deliveryZones.length > 0 && (
                     <div>

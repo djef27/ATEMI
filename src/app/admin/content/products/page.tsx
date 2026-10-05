@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Zap, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Product {
   id: string;
@@ -129,7 +130,7 @@ export default function ProductsPage() {
               {/* Product Image */}
               <div className="aspect-square bg-primary-50 relative">
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  <Image src={product.image_url} alt={product.name} fill className="w-full h-full object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-primary-300">
                     <span className="text-4xl">📦</span>

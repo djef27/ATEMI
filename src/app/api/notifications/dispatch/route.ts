@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       isAdmin = true;
     } else {
       // Check admin session
-      const authSupabase = createServerSupabaseClient();
+      const authSupabase = await createServerSupabaseClient();
       const { data: { user } } = await authSupabase.auth.getUser();
       if (user) {
         const { data: profile } = await authSupabase

@@ -4,6 +4,8 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { sendEmail, orderConfirmationEmail } from '@/lib/email';
 import { z } from 'zod';
 import { getPaymentConfig } from '@/lib/payment/config';
+import { isSupportedCountry, normalizeCity, isUndefinedColumnError } from '@/lib/delivery-zones';
+import { getOrderCreationError } from '@/lib/order-errors';
 import {
   checkIdempotencyKey,
   generateRequestHash,
@@ -39,6 +41,7 @@ const createOrderSchema = z.object({
   delivery_city: z.string().max(100).nullable().optional(),
   delivery_zone_id: z.string().uuid().nullable().optional(),
   delivery_required: z.boolean().default(true),
+  country: z.enum(['BJ', 'CI', 'TG']).default('BJ'),
   customer_notes: z.string().max(500).nullable().optional(),
   items: z.array(orderItemSchema).min(1, 'Panier vide').max(20, 'Trop d\'articles'),
 });
@@ -105,12 +108,66 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      // delivery_zone_id is only required if zones exist for this city (checked client-side)
-      // Server-side: allow null zone_id to avoid blocking orders in cities without configured zones
+
+      const normalizedCity = data.delivery_city.trim();
+      const country = data.country;
+      if (!isSupportedCountry(country)) {
+        return NextResponse.json(
+          { success: false, error: 'Pays de livraison non pris en charge' },
+          { status: 400 }
+        );
+      }
+      const supabase = createAdminSupabaseClient();
+      const zoneQuery = () => supabase
+        .from('delivery_zones')
+        .select('id, city, zone_name, delivery_fee')
+        .eq('country', country)
+        .eq('is_active', true)
+        .eq('is_available', true);
+
+      let { data: zoneRows, error: zoneError } = await zoneQuery()
+        .eq('city_normalized', normalizeCity(normalizedCity));
+
+      if (zoneError && isUndefinedColumnError(zoneError)) {
+        const fallback = await zoneQuery();
+        zoneError = fallback.error;
+        zoneRows = (fallback.data || []).filter(
+          (zone) => normalizeCity(zone.city) === normalizeCity(normalizedCity)
+        );
+      }
+
+      if (zoneError) {
+        console.error('[ORDER_DELIVERY_ZONES_ERROR]', zoneError.message, zoneError.code);
+        return NextResponse.json(
+          { success: false, error: 'Impossible de vérifier la zone de livraison' },
+          { status: 400 }
+        );
+      }
+
+      if (!zoneRows || zoneRows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Aucune zone de livraison disponible pour cette ville. Modifiez la ville ou choisissez le retrait.' },
+          { status: 400 }
+        );
+      }
+
+      if (data.delivery_zone_id && !zoneRows.some((zone) => zone.id === data.delivery_zone_id)) {
+        return NextResponse.json(
+          { success: false, error: 'Zone de livraison invalide pour cette ville' },
+          { status: 400 }
+        );
+      }
+
+      if (!data.delivery_zone_id && zoneRows.length > 1) {
+        return NextResponse.json(
+          { success: false, error: 'Veuillez sélectionner une zone de livraison' },
+          { status: 400 }
+        );
+      }
     }
 
     // 4. Get user session (optional for guest checkout)
-    const authSupabase = createServerSupabaseClient();
+    const authSupabase = await createServerSupabaseClient();
     const { data: { user } } = await authSupabase.auth.getUser();
 
     // 4b. Idempotency check — prevent duplicate orders from double-submit
@@ -167,48 +224,48 @@ export async function POST(request: NextRequest) {
     if (rpcError) {
       // Log the actual error for debugging (server-side only)
       console.error('[ORDER_RPC_ERROR]', rpcError.message, rpcError.code, rpcError.details);
-      // Never expose SQL error messages
+      const failure = getOrderCreationError(rpcError);
       return NextResponse.json(
-        { success: false, error: 'Erreur lors de la création de la commande' },
-        { status: 500 }
+        { success: false, error: failure.message },
+        { status: failure.status }
       );
     }
 
     // 6. Send confirmation email (fire-and-forget)
     if (data.customer_email && rpcData && typeof rpcData === 'object' && 'order_number' in rpcData) {
-      const orderData = rpcData as { order_number: string; tracking_token: string };
+      const orderData = rpcData as {
+        order_id: string;
+        order_number: string;
+        tracking_token: string;
+        subtotal: number;
+        delivery_fee: number;
+        total_amount: number;
+        deposit_amount: number;
+        delivery_balance: number;
+      };
 
-      // Fetch product details for accurate email amounts
-      const productIds = data.items.map((i) => i.product_id);
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, name, selling_price, deposit_rate, supplier_price')
-        .in('id', productIds);
+      // Amounts come from create_order, never from a client-side recomputation:
+      // the database is the single source of truth (and it includes the
+      // delivery fee, which the previous client-side math silently dropped).
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select('product_name, quantity, unit_price')
+        .eq('order_id', orderData.order_id);
 
-      const productMap = new Map<string, { name: string; selling_price: number; deposit_rate: number; supplier_price: number }>();
-      for (const p of products || []) {
-        productMap.set(p.id, { name: p.name, selling_price: p.selling_price, deposit_rate: p.deposit_rate, supplier_price: p.supplier_price });
-      }
-
-      let totalDeposit = 0;
-      let totalRemaining = 0;
-      const itemsWithEmail = data.items.map((i) => {
-        const p = productMap.get(i.product_id);
-        const price = p?.selling_price || 0;
-        const rate = p?.deposit_rate ?? 50;
-        const deposit = Math.round(price * rate / 100) * i.quantity;
-        const remaining = (price - deposit) * i.quantity;
-        totalDeposit += deposit;
-        totalRemaining += remaining;
-        return { name: p?.name || i.product_id, quantity: i.quantity, price };
-      });
+      const items = (orderItems || []).map((i) => ({
+        name: i.product_name,
+        quantity: i.quantity,
+        price: Number(i.unit_price),
+      }));
 
       const emailPayload = orderConfirmationEmail({
         orderNumber: orderData.order_number,
         customerName: data.customer_name,
-        items: itemsWithEmail,
-        deposit: totalDeposit,
-        remaining: totalRemaining,
+        items,
+        deposit: Number(orderData.deposit_amount ?? 0),
+        remaining: Number(orderData.delivery_balance ?? 0),
+        deliveryFee: Number(orderData.delivery_fee ?? 0),
+        total: Number(orderData.total_amount ?? 0),
         deliveryAddress: data.delivery_address || undefined,
         trackingToken: orderData.tracking_token,
       });
@@ -225,7 +282,11 @@ export async function POST(request: NextRequest) {
       success: true,
       data: rpcData,
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      '[ORDER_CREATE_ERROR]',
+      error instanceof Error ? error.message : 'Unknown order creation error'
+    );
     return NextResponse.json(
       { success: false, error: 'Erreur interne du serveur' },
       { status: 500 }
