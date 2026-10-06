@@ -170,7 +170,10 @@ describe('Payment Provider Abstraction', () => {
         KKIAPAY_SECRET_KEY: process.env.KKIAPAY_SECRET_KEY,
         KKIAPAY_SANDBOX: process.env.KKIAPAY_SANDBOX,
       };
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        configurable: true,
+      });
       process.env.PAYMENT_PROVIDER = 'kkiapay';
       process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
       process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
