@@ -276,7 +276,7 @@ export default function AdminCategoriesPage() {
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   placeholder="Ex: Téléphones & Tablets"
                 />
               </div>
@@ -287,7 +287,7 @@ export default function AdminCategoriesPage() {
                   value={form.description || ''}
                   onChange={(e) => setForm({ ...form, description: e.target.value || null })}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none"
                 />
               </div>
 
@@ -297,8 +297,8 @@ export default function AdminCategoriesPage() {
                   type="url"
                   value={form.image_url || ''}
                   onChange={(e) => setForm({ ...form, image_url: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="https://..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
+                  placeholder="https://…"
                 />
               </div>
 
@@ -308,7 +308,7 @@ export default function AdminCategoriesPage() {
                   id="is_active"
                   checked={form.is_active}
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-gray-300 text-primary-600 focus-visible:ring-primary-500"
                 />
                 <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
                   Catégorie active
@@ -366,7 +366,7 @@ export default function AdminCategoriesPage() {
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 />
               </div>
 
@@ -376,7 +376,7 @@ export default function AdminCategoriesPage() {
                   value={editForm.description || ''}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value || null })}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none"
                 />
               </div>
 
@@ -386,8 +386,8 @@ export default function AdminCategoriesPage() {
                   type="url"
                   value={editForm.image_url || ''}
                   onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="https://..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
+                  placeholder="https://…"
                 />
               </div>
 
@@ -397,7 +397,7 @@ export default function AdminCategoriesPage() {
                   id="edit_is_active"
                   checked={editForm.is_active}
                   onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-gray-300 text-primary-600 focus-visible:ring-primary-500"
                 />
                 <label htmlFor="edit_is_active" className="text-sm font-medium text-gray-700">
                   Catégorie active

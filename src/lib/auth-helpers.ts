@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getAppUrl } from '@/lib/app-url';
 
 // ---------------------------------------------------------------------------
 // Centralized authorization helpers for vendor & admin API routes.
@@ -33,7 +34,7 @@ export interface AuthError {
 
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_APP_URL,
+  getAppUrl(),
 ].filter(Boolean);
 
 export function isAllowedOrigin(request: Request): boolean {

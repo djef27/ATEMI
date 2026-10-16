@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from './server';
+import { createPublicServerSupabaseClient, createServerSupabaseClient } from './server';
 
 // ============================================
 // Home page types
@@ -31,7 +31,7 @@ export interface HomeProduct {
 // ============================================
 
 async function fetchPrimaryImages(productIds: string[]): Promise<Map<string, string>> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createPublicServerSupabaseClient();
   const images = new Map<string, string>();
 
   if (productIds.length === 0) return images;
@@ -67,7 +67,7 @@ async function fetchPrimaryImages(productIds: string[]): Promise<Map<string, str
 
 export async function getHomeCategories(): Promise<HomeCategory[]> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
 
     const { data, error } = await supabase
       .from('categories')
@@ -89,7 +89,7 @@ export async function getHomeCategories(): Promise<HomeCategory[]> {
 
 export async function getNewProducts(limit = 8): Promise<HomeProduct[]> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
 
     const { data: products, error } = await supabase
       .from('products')

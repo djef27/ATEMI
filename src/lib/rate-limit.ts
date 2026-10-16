@@ -43,12 +43,13 @@ const memoryStore = new Map<string, { count: number; resetAt: number }>();
 
 // Auto-cleanup every 5 minutes to prevent unbounded memory growth
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
+  const cleanupTimer = setInterval(() => {
     const now = Date.now();
     memoryStore.forEach((entry, key) => {
       if (now > entry.resetAt) memoryStore.delete(key);
     });
   }, 5 * 60 * 1000);
+  if (typeof cleanupTimer !== 'number') cleanupTimer.unref();
 }
 
 function memoryCheck(key: string, config: RateLimitConfig): RateLimitResult {
@@ -187,6 +188,15 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 60_000,
     max: 20, // 20 product operations per minute per vendor
     keyPrefix: 'rl:vendor:product:',
+  } as RateLimitConfig,
+
+  // Sensitive guest recovery: exposes tracking tokens + PII.
+  // Strict per-IP quota; blocked by default in production without Redis
+  // (keyPrefix is covered by FINANCIAL_RATE_LIMIT_PREFIXES below).
+  orderRecovery: {
+    windowMs: 900_000, // 15 minutes
+    max: 5, // 5 recovery attempts per IP per window
+    keyPrefix: 'rl:order:recovery:',
   } as RateLimitConfig,
 
   adminMutation: {

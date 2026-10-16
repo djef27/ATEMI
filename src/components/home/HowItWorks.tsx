@@ -31,7 +31,7 @@ export default function HowItWorks() {
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-300 via-accent-400 to-primary-300" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 z-10">
-        <div className={`text-center mb-12 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <div className={`text-center mb-12 transition-[opacity,transform] duration-700 motion-reduce:transition-none ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <SectionHeader
             tagline="Simple & rapide"
             title="Comment ça marche"
@@ -45,7 +45,7 @@ export default function HowItWorks() {
             return (
               <div
                 key={idx}
-                className={`text-center p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary-100/50 transition-all duration-700 hover:shadow-lg hover:shadow-primary-200/30 hover:-translate-y-1 ${
+                className={`text-center p-8 rounded-2xl bg-white/60 backdrop-blur-sm border border-primary-100/50 transition-[box-shadow,transform] duration-700 motion-reduce:transition-none hover:shadow-lg hover:shadow-primary-200/30 hover:-translate-y-1 ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
                 style={{ transitionDelay: `${idx * 150}ms` }}

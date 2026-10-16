@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Clock, Send, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { useToast } from '@/components/toast-provider';
 
 interface QueueItem {
   id: string;
@@ -18,7 +19,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-600' },
   ready: { label: 'Prêt', color: 'bg-blue-100 text-blue-700' },
   scheduled: { label: 'Programmé', color: 'bg-amber-100 text-amber-700' },
-  publishing: { label: 'Publication...', color: 'bg-purple-100 text-purple-700' },
+  publishing: { label: 'Publication…', color: 'bg-purple-100 text-purple-700' },
   published: { label: 'Publié', color: 'bg-green-100 text-green-700' },
   failed: { label: 'Échoué', color: 'bg-red-100 text-red-700' },
   cancelled: { label: 'Annulé', color: 'bg-gray-100 text-gray-500' },
@@ -32,6 +33,7 @@ const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function QueuePage() {
+  const { showToast } = useToast();
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -66,13 +68,13 @@ export default function QueuePage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Publié avec succès !');
+        showToast('Publié avec succès !');
         fetchQueue();
       } else {
-        alert(data.error || 'Erreur lors de la publication');
+        showToast(data.error || 'Erreur lors de la publication', 'error');
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setPublishing(null);
     }

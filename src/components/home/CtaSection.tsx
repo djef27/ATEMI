@@ -27,7 +27,7 @@ export default function CtaSection() {
               </p>
               <Link
                 href="/products"
-                className="inline-block px-8 py-4 rounded-xl bg-white text-[#1A1919] font-semibold hover:bg-gray-100 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]"
+                className="inline-block px-8 py-4 rounded-xl bg-white text-[#1A1919] font-semibold hover:bg-gray-100 transition-[background-color,box-shadow,transform] duration-300 motion-reduce:transition-none hover:shadow-lg hover:scale-[1.02]"
               >
                 Voir le catalogue
               </Link>

@@ -72,8 +72,10 @@ export default function CartPage() {
             Panier ({itemCount} article{itemCount > 1 ? 's' : ''})
           </h1>
           <button
-            onClick={clearCart}
-            className="text-sm text-rose-600 hover:text-rose-700 font-medium"
+            onClick={() => {
+              if (window.confirm('Voulez-vous vraiment vider votre panier ?')) clearCart();
+            }}
+            className="rounded-sm text-sm text-rose-600 hover:text-rose-700 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
           >
             Vider le panier
           </button>

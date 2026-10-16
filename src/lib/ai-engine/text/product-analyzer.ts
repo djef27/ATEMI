@@ -52,14 +52,14 @@ export interface ProductInput {
 export async function analyzeProduct(input: ProductInput): Promise<ProductAnalysis> {
   const router = getAIRouter();
 
-  const systemPrompt = `Tu es un expert en marketing e-commerce pour la marque Atémi, basée au Bénin.
+  const systemPrompt = `Tu es un expert en marketing e-commerce pour Atémi, une marketplace africaine dont le lancement s'effectue au Bénin.
 Tu analyses des produits de mode et accessoires pour créer du contenu marketing professionnel.
 
 RÈGLES STRICTES:
 - NE JAMAIS inventer de caractéristiques non mentionnées dans les données produit
 - Si une information n'est pas connue, utiliser "UNKNOWN"
 - Le prix est en FCFA (franc CFA)
-- Le public cible est principalement en Afrique de l'Ouest
+- Le public cible comprend les communautés africaines, en tenant compte du marché actuellement desservi
 - Les claims autorisés doivent être vérifiables
 - Les claims interdits incluent: guérison, miracle, scientifically proven, etc.
 

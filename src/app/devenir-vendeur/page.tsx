@@ -67,7 +67,7 @@ export default function VendorRegistrationPage() {
           </div>
           <h1 className="font-serif text-3xl font-bold text-[#1A1919] mb-2">Devenir vendeur</h1>
           <p className="text-gray-600">
-            Rejoignez Atémi et vendez vos produits à des milliers de clients au Bénin.
+            Rejoignez une marketplace qui met en lumière les talents africains. Les inscriptions vendeurs sont actuellement ouvertes au Bénin ; l’ouverture à d’autres marchés se fera progressivement.
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export default function VendorRegistrationPage() {
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique *</label>
                   <input id="name" type="text" required value={form.name} onChange={(e) => update('name', e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="Ex: Boutique Élégance" />
                 </div>
 
@@ -103,13 +103,13 @@ export default function VendorRegistrationPage() {
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                     <input id="phone" type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="+229 01 02 03 04" />
                   </div>
                   <div>
                     <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
                     <input id="whatsapp" type="tel" value={form.whatsapp_number} onChange={(e) => update('whatsapp_number', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="+229 01 02 03 04" />
                   </div>
                 </div>
@@ -118,13 +118,13 @@ export default function VendorRegistrationPage() {
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input id="email" type="email" value={form.email} onChange={(e) => update('email', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="contact@boutique.com" />
                   </div>
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville au Bénin *</label>
                     <input id="city" type="text" required value={form.city} onChange={(e) => update('city', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="Cotonou" />
                   </div>
                 </div>
@@ -132,7 +132,7 @@ export default function VendorRegistrationPage() {
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description de votre boutique</label>
                   <textarea id="description" rows={3} value={form.description} onChange={(e) => update('description', e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 resize-none"
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 resize-none"
                     placeholder="Décrivez vos produits et votre spécialité (optionnel)" />
                 </div>
 

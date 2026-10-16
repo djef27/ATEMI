@@ -77,7 +77,7 @@ export async function generateContentPlan(
 ): Promise<ContentPlan> {
   const router = getAIRouter();
 
-  const systemPrompt = `Tu es directeur de contenu créatif pour Atémi, marque de mode au Bénin.
+  const systemPrompt = `Tu es directeur de contenu créatif pour Atémi, une marketplace africaine dont le lancement s'effectue au Bénin.
 Tu crées des concepts de contenu pour produits e-commerce.
 
 Pour CHAQUE concept, fournis:
@@ -170,7 +170,7 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         voiceDirection: 'Féminin, enthousiaste, naturel',
         cta: 'Lien en bio pour commander',
         caption: `${truth.name} chez Atémi - ${truth.price} FCFA`,
-        hashtags: ['#atemi', '#decouverte', '#mode', '#bénin', '#fashion'],
+        hashtags: ['#atemi', '#decouverte', '#mode', '#modeafricaine', '#fashion'],
         durationSeconds: 15,
         platform: 'tiktok',
         priority: 1,
@@ -184,7 +184,7 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         voiceDirection: 'Féminin, élégant, professionnel',
         cta: 'Commandez sur ate.bj',
         caption: `${truth.name} - Collection Atémi`,
-        hashtags: ['#atemi', '#collection', '#mode', '#elegance', '#bénin'],
+        hashtags: ['#atemi', '#collection', '#mode', '#elegance', '#createursafricains'],
         durationSeconds: 15,
         platform: 'instagram',
         priority: 2,
@@ -198,7 +198,7 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         voiceDirection: 'Féminin, chaleureux, inspirant',
         cta: 'Découvrez la collection',
         caption: `Le style au quotidien avec Atémi`,
-        hashtags: ['#atemi', '#quotidien', '#style', '#lifestyle', '#bénin'],
+        hashtags: ['#atemi', '#quotidien', '#style', '#lifestyle', '#modeafricaine'],
         durationSeconds: 20,
         platform: 'tiktok',
         priority: 3,
@@ -207,12 +207,12 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         conceptType: 'problem_solution',
         hook: `Vous cherchez le ${truth.category.toLowerCase()} parfait?`,
         angle: 'Résolution d\'un problème client',
-        script: `Vous ne trouvez jamais le bon ${truth.category.toLowerCase()}? Atémi a la solution avec ${truth.name}. ${truth.verifiedFeatures[0] || 'Qualité garantie'}. ${truth.price} FCFA.`,
+        script: `Vous ne trouvez jamais le bon ${truth.category.toLowerCase()}? Découvrez ${truth.name} chez Atémi. ${truth.verifiedFeatures[0] || 'Un produit à découvrir'}. ${truth.price} FCFA.`,
         visualDirection: 'Split screen: problème vs solution',
         voiceDirection: 'Féminin, rassurant, confiant',
         cta: 'Solution Atémi',
         caption: `Le ${truth.category.toLowerCase()} que vous attendiez`,
-        hashtags: ['#atemi', '#solution', '#mode', '#bénin', '#fashion'],
+        hashtags: ['#atemi', '#solution', '#mode', '#modeafricaine', '#fashion'],
         durationSeconds: 20,
         platform: 'facebook',
         priority: 4,
@@ -226,7 +226,7 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         voiceDirection: 'Féminin, doux, narratif',
         cta: 'Racontez la vôtre',
         caption: `L'élégance a une histoire. Atémi.`,
-        hashtags: ['#atemi', '#storytelling', '#élégance', '#mode', '#bénin'],
+        hashtags: ['#atemi', '#storytelling', '#élégance', '#mode', '#createursafricains'],
         durationSeconds: 20,
         platform: 'instagram',
         priority: 5,
@@ -235,12 +235,12 @@ function generateFallbackPlan(truth: ProductTruth, projectId: string): ContentPl
         conceptType: 'premium_commercial',
         hook: `Atémi - ${truth.name}`,
         angle: 'Publicité premium classe',
-        script: `${truth.name} par Atémi. ${truth.verifiedFeatures.join('. ')}. Disponible maintenant à ${truth.price} FCFA. Atémi, la beauté du Bénin.`,
+        script: `${truth.name} par Atémi. ${truth.verifiedFeatures.join('. ')}. Découvrez-le à ${truth.price} FCFA. Atémi, les talents d’Afrique.`,
         visualDirection: 'Format publicitaire, transitions fluides, branding',
         voiceDirection: 'Féminin, professionnel, premium',
         cta: 'ate.bj',
-        caption: `Atémi - La beauté du Bénin`,
-        hashtags: ['#atemi', '#premium', '#mode', '#bénin', '#beauté'],
+        caption: `Atémi — Les talents d’Afrique`,
+        hashtags: ['#atemi', '#premium', '#modeafricaine', '#createursafricains', '#beauté'],
         durationSeconds: 30,
         platform: 'all',
         priority: 6,

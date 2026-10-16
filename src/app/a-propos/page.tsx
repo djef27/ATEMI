@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'À propos',
-  description: 'Découvrez Atémi — la marketplace qui connecte les meilleurs vendeurs du Bénin aux acheteurs exigeants.',
+  description: 'Découvrez Atémi, une marketplace africaine qui met en lumière les vendeurs, les créateurs et les communautés locales. Le Bénin est notre premier marché.',
 };
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
             À propos d&apos;Atémi
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            La marketplace qui connecte les meilleurs vendeurs du Bénin aux acheteurs exigeants.
+            Une marketplace pensée pour les talents et les communautés d’Afrique, avec un lancement progressif marché par marché.
           </p>
         </div>
 
@@ -25,14 +25,15 @@ export default function AboutPage() {
           <h2 className="font-serif text-2xl font-bold text-[#1A1919] mb-4">Notre mission</h2>
           <div className="prose prose-gray max-w-none">
             <p className="text-gray-600 leading-relaxed">
-              Atémi est née d&apos;une conviction simple : le Bénin regorge de talents créatifs et de produits de qualité,
-              mais beaucoup de vendeurs talentueux peinent à toucher leur clientèle. Nous avons créé Atémi pour
-              combler ce fossé — en offrant une plateforme moderne, fiable et accessible qui met en lumière
-              le savoir-faire béninois.
+              Atémi est née d&apos;une conviction simple : les communautés africaines regorgent de talents
+              créatifs et de produits de qualité. Nous construisons une plateforme moderne et accessible
+              pour aider les vendeurs à faire découvrir leur savoir-faire et permettre aux clients de
+              trouver des produits qui leur ressemblent.
             </p>
             <p className="text-gray-600 leading-relaxed mt-4">
-              Notre nom vient du Fon — la langue du peuple Fon au Bénin — où &ldquo;Atémi&rdquo; signifie &ldquo;beauté&rdquo;.
-              C&apos;est cette beauté que nous voulons partager avec le monde.
+              Notre nom vient du fon, langue parlée notamment au Bénin, où &ldquo;Atémi&rdquo; signifie
+              &ldquo;beauté&rdquo;. Cette origine fait partie de notre histoire ; notre ambition est de
+              célébrer la diversité des cultures et des créations africaines.
             </p>
           </div>
         </section>
@@ -44,19 +45,19 @@ export default function AboutPage() {
             {[
               {
                 title: 'Qualité',
-                description: 'Chaque vendeur est sélectionné avec soin. Nous garantissons des produits conformes à leurs descriptions.',
+                description: 'Nous mettons à disposition les informations produit fournies afin que chacun puisse choisir en connaissance de cause.',
               },
               {
                 title: 'Confiance',
-                description: 'Le système de paiement en deux fois (acompte + solde à la livraison) protège acheteurs et vendeurs.',
+                description: 'Les modalités de paiement et de livraison sont précisées avant la validation de chaque commande.',
               },
               {
                 title: 'Accessibilité',
-                description: 'Pas besoin de compte bancaire ni de carte. Payez par mobile money, reçu à domicile.',
+                description: 'Les moyens de paiement et les options de livraison varient selon les marchés et les zones effectivement disponibles.',
               },
               {
                 title: 'Communauté',
-                description: 'Nous soutenons les entrepreneurs locaux et contribuons à l\'économie du numérique au Bénin.',
+                description: 'Nous voulons soutenir les entrepreneurs locaux et les économies numériques africaines, marché par marché.',
               },
             ].map((value) => (
               <div key={value.title} className="bg-white rounded-2xl border border-primary-100 p-6 shadow-sm">
@@ -74,7 +75,7 @@ export default function AboutPage() {
             {[
               { step: '1', title: 'Choisissez vos produits', description: 'Parcourez notre catalogue et trouvez ce qui vous plaît.' },
               { step: '2', title: 'Payez un acompte', description: 'Réservez votre commande en payant seulement un pourcentage du total.' },
-              { step: '3', title: 'Recevez à domicile', description: 'Votre commande est livrée directement chez vous à Cotonou et dans les grandes villes.' },
+              { step: '3', title: 'Choisissez une option disponible', description: 'Les options de livraison ou de retrait dépendent du pays et de la zone proposés au checkout. Notre premier marché est le Bénin.' },
               { step: '4', title: 'Solde à la livraison', description: 'Payez le reste du montant uniquement lorsque vous avez reçu et vérifié votre colis.' },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-4">

@@ -5,6 +5,7 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS, FINANCIAL_RATE_LIMIT_PREFIXES } fro
 import { checkIdempotencyKey, storeIdempotencyResponse, generateRequestHash, getIdempotencyKey, IdempotencyContext } from '@/lib/idempotency';
 import { validateServiceRoleKey } from '@/lib/payment/config';
 import { dispatchPaymentActions } from '@/lib/payment/dispatch';
+import { getAppUrl } from '@/lib/app-url';
 
 /**
  * POST /api/payment/confirm
@@ -27,7 +28,7 @@ import { dispatchPaymentActions } from '@/lib/payment/dispatch';
 
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_APP_URL,
+  getAppUrl(),
 ].filter(Boolean);
 
 function isAllowedOrigin(request: NextRequest): boolean {

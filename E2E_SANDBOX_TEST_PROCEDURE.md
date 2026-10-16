@@ -1,4 +1,4 @@
-# PROCÉDURE DE TEST E2E SANDBOX (PAIEMENT)
+# Procédure de test E2E sandbox (paiement)
 
 Document de procédure pour valider de bout en bout les flux de paiement réels
 (KKiaPay, CinetPay et FedaPay) AVANT tout passage en production.
@@ -7,8 +7,6 @@ Document de procédure pour valider de bout en bout les flux de paiement réels
 > Les tests CinetPay/FedaPay nécessitent une URL HTTPS publique stable pour les
 > notifications. KKiaPay utilise son widget web et une vérification serveur; il
 > ne dépend pas de `NEXT_PUBLIC_APP_URL` ni du webhook générique.
-
----
 
 ## 0. Prérequis (blocage actuel)
 
@@ -25,8 +23,6 @@ Document de procédure pour valider de bout en bout les flux de paiement réels
       `20260911120000_payment_provider_and_sync.sql` +
       `20260911130000_notification_dispatcher.sql` +
       `20261002190000_unique_provider_payment_reference.sql`.
-
----
 
 ## 1. Préparation des données de test
 
@@ -60,7 +56,7 @@ LIMIT 1;
    commande ni déclencher une seconde confirmation.
 
 Le widget peut être testé depuis une origine autorisée dans le compte marchand.
-En cas de blocage CSP, vérifier les directives `script-src`, `frame-src` et
+En cas de blocage CSP (Content Security Policy), vérifier les directives `script-src`, `frame-src` et
 `connect-src` dans `next.config.mjs`.
 
 ### 2.1 Parcours nominal
@@ -115,8 +111,6 @@ Renvoyer le MÊME webhook (même `cpm_trans_id`).
 2. Attendu : statut repars en `pending`, `attempts+1`, `next_retry_at` dans le
    futur ; après 3 tentatives → `failed`, plus jamais re-soulevé.
 
----
-
 ## 3. Vérifications DB attendues
 
 ```sql
@@ -129,8 +123,6 @@ FROM payments WHERE order_id = '<order_id>';
 SELECT status, attempts, next_retry_at, error_message
 FROM notifications ORDER BY created_at DESC;
 ```
-
----
 
 ## 4. Quitter le sandbox
 

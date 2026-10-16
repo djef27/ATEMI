@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <aside className="hidden lg:block w-64 bg-white border-r border-primary-100 min-h-screen p-4">
           <div className="mb-6">
             <Link href="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               Retour au site
             </Link>
           </div>
@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       : 'text-gray-600 hover:bg-primary-50 hover:text-[#1A1919]'
                   }`}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
                   {item.label}
                 </Link>
               );

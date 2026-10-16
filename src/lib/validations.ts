@@ -390,3 +390,18 @@ export const kkiapayVerifySchema = paymentInitiateSchema.extend({
     .max(100, 'transaction_id trop longue')
     .regex(/^[a-zA-Z0-9_-]+$/, 'transaction_id invalide'),
 });
+
+export const orderRecoverySchema = z.object({
+  order_number: z
+    .string()
+    .trim()
+    .min(1, 'Numéro de commande requis')
+    .max(40, 'Numéro de commande trop long'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Adresse e-mail requise')
+    .email('Adresse e-mail invalide'),
+});
+
+export type OrderRecoveryInput = z.infer<typeof orderRecoverySchema>;

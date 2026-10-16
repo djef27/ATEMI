@@ -60,13 +60,13 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
               onMouseLeave={() => setShopOpen(false)}
             >
               <button
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                 onClick={() => setShopOpen(!shopOpen)}
                 aria-expanded={shopOpen}
                 aria-haspopup="true"
               >
                 Boutique
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${shopOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${shopOpen ? 'rotate-180' : ''} motion-reduce:transition-none`} aria-hidden="true" />
               </button>
 
               {shopOpen && (
@@ -113,13 +113,17 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
             {/* Desktop search */}
             <form onSubmit={handleSearch} className="hidden lg:flex items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+                <label htmlFor="desktop-product-search" className="sr-only">Rechercher un produit</label>
                 <input
-                  type="text"
+                  id="desktop-product-search"
+                  name="q"
+                  type="search"
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher..."
-                  className="w-40 lg:w-48 pl-9 pr-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent focus:w-56 lg:focus:w-64 transition-all"
+                  placeholder="Rechercher…"
+                  className="w-40 lg:w-48 pl-9 pr-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:border-transparent focus-visible:w-56 lg:focus-visible:w-64 transition-[width] motion-reduce:transition-none"
                 />
               </div>
             </form>
@@ -127,18 +131,18 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
             {/* Mobile search icon */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
               aria-label="Rechercher"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-5 h-5" aria-hidden="true" />
             </button>
 
             <Link
               href="/cart"
-              className="relative p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="relative p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
               aria-label={`Panier (${itemCount} article${itemCount !== 1 ? 's' : ''})`}
             >
-              <ShoppingBag className="w-5 h-5" />
+              <ShoppingBag className="w-5 h-5" aria-hidden="true" />
               {itemCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {itemCount > 9 ? '9+' : itemCount}
@@ -152,24 +156,27 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                   aria-expanded={userMenuOpen}
                   aria-haspopup="true"
                 >
                   <div className="w-7 h-7 rounded-full bg-white/20 text-white flex items-center justify-center">
-                    <User className="w-3.5 h-3.5" />
+                    <User className="w-3.5 h-3.5" aria-hidden="true" />
                   </div>
                   <span className="hidden sm:inline truncate max-w-[100px]">
                     {profile?.full_name || user.email?.split('@')[0]}
                   </span>
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="w-3 h-3" aria-hidden="true" />
                 </button>
 
                 {userMenuOpen && (
                   <>
-                    <div
-                      className="fixed inset-0 z-40"
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-40 cursor-default"
                       onClick={() => setUserMenuOpen(false)}
+                      aria-label="Fermer le menu"
+                      tabIndex={-1}
                     />
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-primary-100 py-2 z-50">
                       <div className="px-4 py-3 border-b border-primary-100">
@@ -184,7 +191,7 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50"
                       >
-                        <User className="w-4 h-4" />
+                        <User className="w-4 h-4" aria-hidden="true" />
                         Mon compte
                       </Link>
 
@@ -193,7 +200,7 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50"
                       >
-                        <Package className="w-4 h-4" />
+                        <Package className="w-4 h-4" aria-hidden="true" />
                         Mes commandes
                       </Link>
 
@@ -202,7 +209,7 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50"
                       >
-                        <FileText className="w-4 h-4" />
+                        <FileText className="w-4 h-4" aria-hidden="true" />
                         Mes reçus
                       </Link>
 
@@ -229,9 +236,9 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
                       <div className="border-t border-primary-100 mt-1 pt-1">
                         <button
                           onClick={handleSignOut}
-                          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50"
+                          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="w-4 h-4" aria-hidden="true" />
                           Déconnexion
                         </button>
                       </div>
@@ -259,11 +266,11 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
             {/* Mobile hamburger */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10"
+              className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
               aria-label="Menu"
               aria-expanded={menuOpen}
             >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {menuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
           </div>
         </div>
@@ -351,22 +358,27 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
           <div className="lg:hidden border-t border-white/10 py-4">
             <form onSubmit={handleSearch} className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+                <label htmlFor="mobile-product-search" className="sr-only">Rechercher un produit</label>
                 <input
-                  type="text"
+                  id="mobile-product-search"
+                  name="q"
+                  type="search"
+                  autoComplete="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher un produit..."
+                  placeholder="Rechercher un produit…"
                   autoFocus
-                  className="w-full pl-9 pr-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                  className="w-full pl-9 pr-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-                className="p-3 text-gray-400 hover:text-white"
+                className="p-3 text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                aria-label="Fermer la recherche"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </form>
           </div>

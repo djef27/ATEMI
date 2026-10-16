@@ -107,6 +107,38 @@ describe('CinetPay provider', () => {
     expect(result.paidAt).toBeNull();
   });
 
+  it('maps official SUCCESS / FAILED statuses from the check API', async () => {
+    const globalWithFetch = globalThis as Omit<typeof globalThis, 'fetch'> & { fetch?: typeof fetch };
+
+    globalWithFetch.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ code: '00', data: { status: 'SUCCESS', amount: 2500, currency: 'XOF' } }),
+    });
+    const successResult = await new CinetPayPaymentProvider(config).getPaymentStatus('TX-1');
+    expect(successResult.status).toBe('succeeded');
+
+    globalWithFetch.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ code: '00', data: { status: 'FAILED', amount: 2500, currency: 'XOF' } }),
+    });
+    const failedResult = await new CinetPayPaymentProvider(config).getPaymentStatus('TX-1');
+    expect(failedResult.status).toBe('failed');
+  });
+
+  it('maps INITIATED as pending (never confirmed)', async () => {
+    const globalWithFetch = globalThis as Omit<typeof globalThis, 'fetch'> & { fetch?: typeof fetch };
+    globalWithFetch.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ code: '00', data: { status: 'INITIATED', amount: 2500, currency: 'XOF' } }),
+    });
+
+    const provider = new CinetPayPaymentProvider(config);
+    const result = await provider.getPaymentStatus('TX-1');
+
+    expect(result.status).toBe('pending');
+    expect(result.paidAt).toBeNull();
+  });
+
   it('throws when the payment check API returns HTTP error', async () => {
     const globalWithFetch = globalThis as Omit<typeof globalThis, 'fetch'> & { fetch?: typeof fetch };
     globalWithFetch.fetch = jest.fn().mockResolvedValue({

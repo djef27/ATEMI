@@ -6,6 +6,7 @@ import { PROVIDER_EVENT_MAP, type PaymentProvider } from '@/lib/payment/types';
 import { getPaymentProvider } from '@/lib/payment/providers';
 import { getPaymentConfig, validateServiceRoleKey } from '@/lib/payment/config';
 import { dispatchPaymentActions } from '@/lib/payment/dispatch';
+import { getClientIp } from '@/lib/request';
 import {
   parseEvent,
   extractTransactionId,
@@ -33,6 +34,13 @@ import {
  *   10. Atomic SQL state change (confirm_deposit_payment RPC)
  *   11. Idempotency response storage
  *
+ * CINETPAY NOTE: CinetPay notifications are not signed and only carry the
+ * declared outcome (cpm_result). Their status is NEVER trusted: the action is
+ * computed exclusively from the provider payment-check API (source of truth).
+ * A forged 'payment.failed' event cannot therefore downgrade a payment whose
+ * server-side status is 'succeeded'. Refund transitions require a
+ * provider-verified API result and are refused otherwise.
+ *
  * PROVIDER CONFIGURATION REQUIRED:
  *   - Set PAYMENT_WEBHOOK_SECRET in .env.local
  *   - Set PAYMENT_PROVIDER (e.g., 'fedapay')
@@ -56,7 +64,7 @@ export async function POST(request: NextRequest) {
     // 1. Rate limiting (generous for provider retries)
     // ------------------------------------------------------------------
 
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = getClientIp(request);
     const rl = await checkRateLimit(ip, RATE_LIMIT_CONFIGS.paymentWebhook);
 
     if (!rl.allowed) {
@@ -185,7 +193,7 @@ export async function POST(request: NextRequest) {
     // 7. Map provider event type to internal action
     // ------------------------------------------------------------------
 
-    const action = PROVIDER_EVENT_MAP[eventType];
+    let action: string | null = PROVIDER_EVENT_MAP[eventType];
     if (!action) {
       const response = { success: true, message: `Événement non géré: ${eventType}` };
       await storeIdempotencyResponse(idempotencyKey!, 200, response);
@@ -231,6 +239,21 @@ export async function POST(request: NextRequest) {
     const providerConfirmation = config.provider === 'cinetpay'
       ? await provider.getPaymentStatus(providerTransactionId)
       : null;
+
+    // The event's declared outcome is NOT trusted for CinetPay (unsigned
+    // notification): the action is derived only from the provider API.
+    // For other providers (signature-verified, e.g. FedaPay) the event map
+    // stands. Refund transitions are additionally refused further down.
+    if (config.provider === 'cinetpay') {
+      if (providerConfirmation?.status === 'succeeded') {
+        action = 'payment_confirmed';
+      } else if (providerConfirmation?.status === 'failed') {
+        action = 'payment_failed';
+      } else {
+        action = null;
+      }
+    }
+
     await supabase
       .from('payments')
       .update({
@@ -390,13 +413,13 @@ export async function POST(request: NextRequest) {
       }
       response = { success: true, message: 'Paiement marqué comme échoué' };
     } else if (action === 'payment_refunded') {
-      if (payment.status === 'paid') {
-        await supabase
-          .from('payments')
-          .update({ status: 'refunded', updated_at: new Date().toISOString() })
-          .eq('id', payment.id);
-      }
-      response = { success: true, message: 'Remboursement traité' };
+      // A refund transition must never be triggered by a mere notification.
+      // It requires a provider-verified API result, which none of the current
+      // adapters expose. Refuse the transition and require manual reconciliation.
+      response = {
+        success: false,
+        error: 'Remboursement refusé — transition non confirmée par le prestataire, traitement manuel requis',
+      };
     } else {
       response = { success: true, message: `Action ${action} reçue` };
     }

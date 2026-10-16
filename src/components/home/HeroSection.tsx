@@ -21,23 +21,23 @@ export default function HeroSection() {
             Collection Atémi
           </p>
           <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] tracking-tight">
-            Le style qui vous
-            <span className="text-primary-400"> correspond</span>
+            Les talents d’Afrique,
+            <span className="text-primary-400"> à portée de main</span>
           </h1>
           <p className="mt-4 sm:mt-5 text-base sm:text-xl text-gray-300 max-w-lg leading-relaxed">
-            Découvrez une sélection de produits de qualité directement
-            chez les meilleurs vendeurs du Bénin. Payez en deux fois.
+            Découvrez les créations et les vendeurs qui font la richesse des communautés africaines.
+            Atémi démarre au Bénin et ouvre progressivement les marchés selon les paiements, livraisons et zones réellement disponibles.
           </p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Link
               href="/products"
-              className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-white text-[#1A1919] font-semibold text-sm sm:text-base hover:bg-gray-100 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] text-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-white text-[#1A1919] font-semibold text-sm sm:text-base hover:bg-gray-100 transition-[background-color,box-shadow,transform] duration-300 motion-reduce:transition-none hover:shadow-lg hover:scale-[1.02] text-center"
             >
               Découvrir la collection
             </Link>
             <Link
               href="/comment-ca-marche"
-              className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl border border-white/30 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-all duration-300 hover:border-white/50 text-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl border border-white/30 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-[background-color,border-color] duration-300 hover:border-white/50 text-center"
             >
               Comment ça marche
             </Link>

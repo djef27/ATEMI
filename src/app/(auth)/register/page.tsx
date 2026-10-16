@@ -105,7 +105,7 @@ export default function RegisterPage() {
                   required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                   focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                   focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                   placeholder="Prénom"
                 />
               </div>
@@ -119,7 +119,7 @@ export default function RegisterPage() {
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                   focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                   focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                   placeholder="Nom"
                 />
               </div>
@@ -135,7 +135,7 @@ export default function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                 focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                 placeholder="vous@exemple.com"
               />
             </div>
@@ -150,7 +150,7 @@ export default function RegisterPage() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                 focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                 placeholder="+229 01 02 03 04"
               />
             </div>
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                 focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                 placeholder="Au moins 6 caractères"
               />
             </div>
@@ -180,7 +180,7 @@ export default function RegisterPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus:outline-none                 focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
                 placeholder="Retapez le mot de passe"
               />
             </div>
@@ -188,7 +188,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Création en cours...' : 'Créer mon compte'}
             </button>

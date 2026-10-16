@@ -105,7 +105,7 @@ export default function MobilePreviewClient() {
             <select
               value={selectedDevice}
               onChange={(e) => handleDeviceChange(Number(e.target.value))}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
             >
               {DEVICES.map((d, i) => (
                 <option key={i} value={i}>
@@ -122,7 +122,7 @@ export default function MobilePreviewClient() {
                 type="number"
                 value={customWidth}
                 onChange={(e) => { setCustomWidth(Number(e.target.value)); setIframeKey((k) => k + 1); }}
-                className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                 placeholder="W"
               />
               <span className="text-gray-500">×</span>
@@ -130,7 +130,7 @@ export default function MobilePreviewClient() {
                 type="number"
                 value={customHeight}
                 onChange={(e) => { setCustomHeight(Number(e.target.value)); setIframeKey((k) => k + 1); }}
-                className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
                 placeholder="H"
               />
             </div>
@@ -158,7 +158,7 @@ export default function MobilePreviewClient() {
             <select
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+              className="bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
             >
               {ZOOM_LEVELS.map((z) => (
                 <option key={z} value={z}>{z}%</option>
@@ -248,7 +248,7 @@ export default function MobilePreviewClient() {
         <div className="relative">
           {/* Device frame */}
           <div
-            className={`relative bg-gray-950 rounded-[2rem] border-4 border-gray-700 shadow-2xl overflow-hidden transition-all duration-300 ${
+            className={`relative bg-gray-950 rounded-[2rem] border-4 border-gray-700 shadow-2xl overflow-hidden transition-[width,height,border-color] duration-300 motion-reduce:transition-none ${
               showOverflow ? 'border-red-500' : ''
             }`}
             style={{

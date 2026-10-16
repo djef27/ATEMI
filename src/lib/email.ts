@@ -7,6 +7,7 @@
 
 import { formatPrice, escapeHtml } from '@/lib/utils';
 import { getOrderStatusLabel } from '@/lib/order-status';
+import { getAppUrl } from '@/lib/app-url';
 
 export interface EmailOptions {
   to: string;
@@ -79,7 +80,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
 // Email templates
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const BASE_URL = getAppUrl();
 
 /**
  * Renders the item rows of an order table.
@@ -145,7 +146,7 @@ export function orderConfirmationEmail(data: {
   </p>
 
   <p style="color:#999;font-size:12px;margin-top:32px">
-    Atémi — Mode, chaussures et accessoires au Bénin<br>
+    Atémi — Les talents d’Afrique, un marché à la fois<br>
     <a href="${BASE_URL}" style="color:#999">${BASE_URL}</a>
   </p>
 </body>
@@ -242,11 +243,10 @@ export function paymentConfirmationEmail(data: {
   </p>
 
   <p style="color:#999;font-size:12px;margin-top:32px">
-    Atémi — Mode, chaussures et accessoires au Bénin<br>
+    Atémi — Les talents d’Afrique, un marché à la fois<br>
     <a href="${BASE_URL}" style="color:#999">${BASE_URL}</a>
   </body>
 </html>`;
 
   return { subject, html };
 }
-

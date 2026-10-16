@@ -159,7 +159,7 @@ export default function MonComptePage() {
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent"
+                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
               />
             </div>
             <div>
@@ -169,7 +169,7 @@ export default function MonComptePage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent"
+                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
                 placeholder="+229 01 02 03 04"
               />
             </div>
@@ -211,7 +211,7 @@ export default function MonComptePage() {
                 minLength={6}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent"
+                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
               />
             </div>
             <div>
@@ -223,7 +223,7 @@ export default function MonComptePage() {
                 minLength={6}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent"
+                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
               />
             </div>
           </div>

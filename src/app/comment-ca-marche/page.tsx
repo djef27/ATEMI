@@ -7,22 +7,22 @@ const steps = [
   {
     icon: ShoppingBag,
     title: 'Choisissez vos produits',
-    description: 'Parcourez notre catalogue et ajoutez les articles qui vous plaisent à votre panier. Chaque produit affiche son prix et le taux d\u2019acompte applicable.',
+    description: 'Parcourez le catalogue, consultez les informations de chaque article et ajoutez vos choix au panier.',
   },
   {
     icon: CreditCard,
-    title: 'Payez l\u2019acompte',
-    description: 'Passez commande en ne payant qu\u2019un pourcentage du prix total. Le montant exact est calculé automatiquement selon le taux défini par le vendeur.',
+    title: 'Vérifiez les options de paiement',
+    description: 'Au checkout, consultez les moyens de paiement et les modalités réellement proposés pour votre commande avant de la valider.',
   },
   {
     icon: Truck,
-    title: 'Livraison à domicile',
-    description: 'Votre commande est préparée et livrée à l\u2019adresse indiquée. Vous pouvez aussi choisir le retrait en boutique.',
+    title: 'Choisissez une option de réception',
+    description: 'Les options de livraison ou de retrait dépendent de votre zone et sont affichées au checkout lorsqu’elles sont disponibles.',
   },
   {
     icon: CheckCircle,
-    title: 'Payez le solde à la livraison',
-    description: 'Au moment de la livraison, vous payez le montant restant directement au livreur ou au vendeur.',
+    title: 'Suivez votre commande',
+    description: 'Après confirmation, retrouvez les informations et le suivi de votre commande dans votre espace client.',
   },
 ];
 
@@ -36,7 +36,7 @@ export default function CommentCaMarchePage() {
             Comment ça marche&nbsp;?
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Achetez en toute confiance grâce à notre système de paiement en deux fois.
+            Atémi met en relation vendeurs et clients en Afrique. Notre premier marché est le Bénin ; les moyens de paiement et de livraison dépendent des options ouvertes pour chaque commande.
           </p>
         </div>
 

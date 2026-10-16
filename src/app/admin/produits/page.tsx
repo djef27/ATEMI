@@ -412,7 +412,7 @@ export default function AdminProduitsPage() {
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   />
                 </div>
 
@@ -422,7 +422,7 @@ export default function AdminProduitsPage() {
                     value={form.description || ''}
                     onChange={(e) => setForm({ ...form, description: e.target.value || null })}
                     rows={3}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none"
                   />
                 </div>
 
@@ -433,7 +433,7 @@ export default function AdminProduitsPage() {
                       required
                       value={form.vendor_id}
                       onChange={(e) => setForm({ ...form, vendor_id: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     >
                       <option value="">Sélectionner un vendeur</option>
                       {vendors.map((v) => (
@@ -447,7 +447,7 @@ export default function AdminProduitsPage() {
                       required
                       value={form.category_id || ''}
                       onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     >
                       <option value="">Sélectionner une catégorie</option>
                       {categories.map((c) => (
@@ -467,7 +467,7 @@ export default function AdminProduitsPage() {
                       step="1"
                       value={form.supplier_price || ''}
                       onChange={(e) => setForm({ ...form, supplier_price: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     />
                   </div>
                   <div>
@@ -479,7 +479,7 @@ export default function AdminProduitsPage() {
                       step="1"
                       value={form.selling_price || ''}
                       onChange={(e) => setForm({ ...form, selling_price: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     />
                   </div>
                   <div>
@@ -492,7 +492,7 @@ export default function AdminProduitsPage() {
                       step="1"
                       value={form.deposit_rate ?? 50}
                       onChange={(e) => setForm({ ...form, deposit_rate: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     />
                   </div>
                 </div>
@@ -513,7 +513,7 @@ export default function AdminProduitsPage() {
                       step="1"
                       value={form.stock || ''}
                       onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     />
                   </div>
                   <div>
@@ -521,7 +521,7 @@ export default function AdminProduitsPage() {
                     <select
                       value={form.status}
                       onChange={(e) => setForm({ ...form, status: e.target.value as ProductCreateInput['status'] })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     >
                       <option value="draft">Brouillon</option>
                       <option value="active">Actif</option>
@@ -622,7 +622,7 @@ export default function AdminProduitsPage() {
                   required
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 />
               </div>
 
@@ -632,7 +632,7 @@ export default function AdminProduitsPage() {
                   value={editForm.description}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none"
                 />
               </div>
 
@@ -642,7 +642,7 @@ export default function AdminProduitsPage() {
                   required
                   value={editForm.category_id || ''}
                   onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 >
                   <option value="">Sélectionner une catégorie</option>
                   {categories.map((c) => (
@@ -661,7 +661,7 @@ export default function AdminProduitsPage() {
                     step="1"
                     value={editForm.supplier_price || ''}
                     onChange={(e) => setEditForm({ ...editForm, supplier_price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   />
                 </div>
                 <div>
@@ -673,7 +673,7 @@ export default function AdminProduitsPage() {
                     step="1"
                     value={editForm.selling_price || ''}
                     onChange={(e) => setEditForm({ ...editForm, selling_price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   />
                 </div>
                 <div>
@@ -686,7 +686,7 @@ export default function AdminProduitsPage() {
                     step="1"
                     value={editForm.deposit_rate}
                     onChange={(e) => setEditForm({ ...editForm, deposit_rate: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   />
                 </div>
               </div>
@@ -707,7 +707,7 @@ export default function AdminProduitsPage() {
                     step="1"
                     value={editForm.stock || ''}
                     onChange={(e) => setEditForm({ ...editForm, stock: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   />
                 </div>
                 <div>
@@ -715,7 +715,7 @@ export default function AdminProduitsPage() {
                   <select
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as Product['status'] })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   >
                     <option value="draft">Brouillon</option>
                     <option value="active">Actif</option>

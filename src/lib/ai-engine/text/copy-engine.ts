@@ -52,7 +52,7 @@ export async function generateCopy(
     youtube: 'YouTube: titre accrocheur, description complète, hashtags.',
   };
 
-  const systemPrompt = `Tu es un copywriter expert pour la marque Atémi, fashion e-commerce au Bénin.
+  const systemPrompt = `Tu es un copywriter expert pour Atémi, une marketplace africaine dont le lancement s'effectue au Bénin.
 Tu écris du contenu marketing en français pour ${platform}.
 
 RÈGLES ABSOLUES:
@@ -198,7 +198,7 @@ export function generateHashtags(truth: ProductTruth, platform: string): string[
   const base = ['#atemi'];
 
   const categoryMap: Record<string, string[]> = {
-    'Mode': ['#mode', '#fashion', '#style', '#bénin', '#cotonou'],
+    'Mode': ['#mode', '#fashion', '#style', '#modeafricaine', '#createursafricains'],
     'Perruques': ['#perruque', '#wig', '#hair', '#beauté'],
     'Accessoires': ['#accessoire', '#bijoux', '#style'],
     'Chaussures': ['#chaussures', '#shoes', '#mode'],

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Users, Loader2, Plus, X, Pencil, Trash2, Eye, Check, Ban } from 'lucide-react';
+import { useToast } from '@/components/toast-provider';
 import type { Vendor } from '@/types';
 import type { VendorCreateInput } from '@/lib/validations';
 
@@ -30,6 +31,7 @@ interface VendorWithStats extends Vendor {
 }
 
 export default function AdminVendeursPage() {
+  const { showToast } = useToast();
   const [vendors, setVendors] = useState<VendorWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -170,14 +172,14 @@ export default function AdminVendeursPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        alert(data.error || 'Erreur lors de la désactivation');
+        showToast(data.error || 'Erreur lors de la désactivation', 'error');
         return;
       }
 
       setDeleteVendor(null);
       await fetchVendors();
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -223,8 +225,8 @@ export default function AdminVendeursPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher..."
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Rechercher…"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           />
           <span className="text-sm text-gray-500">{filteredVendors.length} vendeur{filteredVendors.length > 1 ? 's' : ''}</span>
           <button
@@ -355,7 +357,7 @@ export default function AdminVendeursPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                 <input type="text" required value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -363,14 +365,14 @@ export default function AdminVendeursPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                   <input type="tel" value={form.phone || ''}
                     onChange={(e) => setForm({ ...form, phone: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                     placeholder="+229 01 02 03 04" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
                   <input type="tel" value={form.whatsapp_number || ''}
                     onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
               </div>
 
@@ -378,14 +380,14 @@ export default function AdminVendeursPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" value={form.email || ''}
                   onChange={(e) => setForm({ ...form, email: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
                 <input type="text" value={form.address || ''}
                   onChange={(e) => setForm({ ...form, address: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -393,13 +395,13 @@ export default function AdminVendeursPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
                   <input type="text" value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pays</label>
                   <input type="text" value={form.country}
                     onChange={(e) => setForm({ ...form, country: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
               </div>
 
@@ -440,7 +442,7 @@ export default function AdminVendeursPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
                 <input type="text" value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -448,13 +450,13 @@ export default function AdminVendeursPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                   <input type="tel" value={editForm.phone || ''}
                     onChange={(e) => setEditForm({ ...editForm, phone: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
                   <input type="tel" value={editForm.whatsapp_number || ''}
                     onChange={(e) => setEditForm({ ...editForm, whatsapp_number: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
               </div>
 
@@ -462,14 +464,14 @@ export default function AdminVendeursPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" value={editForm.email || ''}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
                 <input type="text" value={editForm.address || ''}
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value || null })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -477,13 +479,13 @@ export default function AdminVendeursPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
                   <input type="text" value={editForm.city || ''}
                     onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                   <select value={editForm.status || 'active'}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as VendorCreateInput['status'] })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent">
                     <option value="active">Actif</option>
                     <option value="inactive">Inactif</option>
                     <option value="suspended">Suspendu</option>

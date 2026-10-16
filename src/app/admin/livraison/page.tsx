@@ -235,7 +235,7 @@ export default function AdminDeliveryZonesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher une ville ou zone…"
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-300 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
         />
       </div>
 
@@ -364,7 +364,7 @@ export default function AdminDeliveryZonesPage() {
                   list="delivery-cities"
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   placeholder="Ex: Cotonou"
                 />
                 <datalist id="delivery-cities">
@@ -381,7 +381,7 @@ export default function AdminDeliveryZonesPage() {
                   required
                   value={form.zone_name}
                   onChange={(e) => setForm({ ...form, zone_name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   placeholder="Ex: Centre-Ville"
                 />
               </div>
@@ -395,7 +395,7 @@ export default function AdminDeliveryZonesPage() {
                   step={50}
                   value={form.delivery_fee}
                   onChange={(e) => setForm({ ...form, delivery_fee: Number(e.target.value) })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   placeholder="Ex: 1000"
                 />
               </div>
@@ -406,7 +406,7 @@ export default function AdminDeliveryZonesPage() {
                   id="is_available"
                   checked={form.is_available}
                   onChange={(e) => setForm({ ...form, is_available: e.target.checked })}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-gray-300 text-primary-600 focus-visible:ring-primary-500"
                 />
                 <label htmlFor="is_available" className="text-sm font-medium text-gray-700">
                   Zone disponible à la livraison
@@ -458,7 +458,7 @@ export default function AdminDeliveryZonesPage() {
                   list="delivery-cities-edit"
                   value={editForm.city || ''}
                   onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 />
                 <datalist id="delivery-cities-edit">
                   {existingCities.map((city) => (
@@ -474,7 +474,7 @@ export default function AdminDeliveryZonesPage() {
                   required
                   value={editForm.zone_name || ''}
                   onChange={(e) => setEditForm({ ...editForm, zone_name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 />
               </div>
 
@@ -487,7 +487,7 @@ export default function AdminDeliveryZonesPage() {
                   step={50}
                   value={editForm.delivery_fee}
                   onChange={(e) => setEditForm({ ...editForm, delivery_fee: Number(e.target.value) })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                 />
               </div>
 
@@ -497,7 +497,7 @@ export default function AdminDeliveryZonesPage() {
                     type="checkbox"
                     checked={editForm.is_available}
                     onChange={(e) => setEditForm({ ...editForm, is_available: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-gray-300 text-primary-600 focus-visible:ring-primary-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Disponible</span>
                 </label>
@@ -506,7 +506,7 @@ export default function AdminDeliveryZonesPage() {
                     type="checkbox"
                     checked={editForm.is_active}
                     onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-gray-300 text-primary-600 focus-visible:ring-primary-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Active</span>
                 </label>

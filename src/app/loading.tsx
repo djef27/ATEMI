@@ -10,7 +10,7 @@ export default function Loading() {
         </div>
         <div className="flex justify-center items-center gap-3 text-sm text-gray-500">
           <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-800 rounded-full animate-spin" />
-          <span>Chargement...</span>
+          <span>Chargement…</span>
         </div>
       </div>
     </div>

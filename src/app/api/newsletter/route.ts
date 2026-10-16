@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/request';
 
 const newsletterSchema = z.object({
   email: z.string().email('Email invalide').max(200),
 });
-
-function getClientIp(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,11 +45,19 @@ export async function POST(request: NextRequest) {
       );
 
     if (insertError) {
-      console.error('newsletter_subscribers insert failed:', insertError.message);
+      console.error('newsletter_subscribers insert failed:', { code: insertError.code });
+      return NextResponse.json(
+        { success: false, error: 'Impossible d’enregistrer votre inscription. Réessayez plus tard.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error: unknown) {
+    console.error(
+      '[NEWSLETTER_SUBSCRIPTION_ERROR]',
+      error instanceof Error ? error.name : 'Unknown error'
+    );
     return NextResponse.json(
       { success: false, error: 'Erreur interne du serveur' },
       { status: 500 }

@@ -1,31 +1,36 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ToastProvider } from '@/components/toast-provider';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import ScrollToTop from '@/components/scroll-to-top';
+import { getAppUrl } from '@/lib/app-url';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  metadataBase: new URL(getAppUrl()),
   title: {
-    default: 'Atémi | Mode, Chaussures & Perruques au Bénin',
+    default: 'Atémi | Marketplace africaine de mode, beauté et accessoires',
     template: '%s | Atémi',
   },
-  description: 'Découvrez une sélection de produits de qualité — mode, chaussures, perruques et accessoires. Payez en deux fois : acompte à la commande, solde à la livraison.',
-  keywords: ['mode', 'chaussures', 'perruques', 'bénin', 'boutique', 'ecommerce', 'acompte', 'livraison'],
+  description: 'Atémi met en lumière les vendeurs et les créations d’Afrique. Notre premier marché est le Bénin ; les paiements et livraisons disponibles sont indiqués selon votre pays et votre zone.',
+  keywords: ['marketplace africaine', 'mode africaine', 'créateurs africains', 'chaussures', 'beauté', 'perruques', 'accessoires', 'commerce en ligne', 'Bénin'],
   openGraph: {
-    title: 'Atémi | Mode, Chaussures & Perruques au Bénin',
-    description: 'Découvrez une sélection de produits de qualité. Payez en deux fois.',
+    title: 'Atémi | La marketplace des talents africains',
+    description: 'Découvrez les créations et les vendeurs d’Afrique. Disponibilité selon les marchés actuellement ouverts.',
     type: 'website',
-    locale: 'fr_BJ',
     siteName: 'Atémi',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Atémi | Mode, Chaussures & Perruques au Bénin',
-    description: 'Découvrez une sélection de produits de qualité. Payez en deux fois.',
+    title: 'Atémi | La marketplace des talents africains',
+    description: 'Découvrez les créations et les vendeurs d’Afrique. Disponibilité selon les marchés actuellement ouverts.',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#544030',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({
@@ -45,7 +50,9 @@ export default function RootLayout({
               Aller au contenu principal
             </a>
             <Header />
-            <main id="main-content">{children}</main>
+            <div id="main-content" tabIndex={-1}>
+              {children}
+            </div>
             <Footer />
             <ScrollToTop />
           </ToastProvider>

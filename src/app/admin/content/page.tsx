@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Package, FileText, Clock, CheckCircle, AlertCircle, TrendingUp, Play, Pause, RefreshCw, Loader2 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { useToast } from '@/components/toast-provider';
 
 interface Stats {
   totalProducts: number;
@@ -25,6 +26,7 @@ interface AutopilotStatus {
 }
 
 export default function ContentDashboard() {
+  const { showToast } = useToast();
   const [stats, setStats] = useState<Stats | null>(null);
   const [autopilot, setAutopilot] = useState<AutopilotStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,13 +77,13 @@ export default function ContentDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Cycle terminé !\n${data.data.productsProcessed} produits traités\n${data.data.conceptsGenerated} concepts générés\n${data.data.itemsQueued} items en file`);
+        showToast(`Cycle terminé : ${data.data.productsProcessed} produits traités, ${data.data.conceptsGenerated} concepts générés, ${data.data.itemsQueued} items en file`);
         fetchData();
       } else {
-        alert(data.error || 'Erreur');
+        showToast(data.error || 'Erreur', 'error');
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setRunningCycle(false);
     }

@@ -1,7 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
-export const alt = 'Atémi — Mode, Chaussures & Perruques au Bénin';
+export const alt = 'Atémi — La marketplace des talents africains';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -40,7 +39,7 @@ export default function OGImage(): ImageResponse {
             textAlign: 'center',
           }}
         >
-          Mode, Chaussures &amp; Perruques au Bénin
+          La marketplace des talents africains
         </div>
         <div
           style={{
@@ -50,7 +49,7 @@ export default function OGImage(): ImageResponse {
             display: 'flex',
           }}
         >
-          Acompte à la commande · Solde à la livraison
+          Les talents d’Afrique, un marché à la fois
         </div>
       </div>
     ),

@@ -80,21 +80,57 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  // Fetch images separately
-  let mediaRows: Array<{ image_url: string; alt_text: string; media_type: string; sort_order: number; is_primary: boolean }> = [];
+  if (!supabase) notFound();
+  const db = supabase;
+  const vendorId = String(product.vendor_id || '');
+  const categoryId = String(product.category_id || '');
 
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data } = await supabase
-      .from('product_images')
-      .select('image_url, alt_text, media_type, sort_order, is_primary')
-      .eq('product_id', product.id as string)
-      .order('sort_order');
+  const mediaPromise = (async () => {
+    try {
+      const { data } = await db
+        .from('product_images')
+        .select('image_url, alt_text, media_type, sort_order, is_primary')
+        .eq('product_id', String(product.id))
+        .order('sort_order');
+      return data || [];
+    } catch {
+      return [];
+    }
+  })();
 
-    mediaRows = data || [];
-  } catch {
-    mediaRows = [];
-  }
+  const vendorPromise = (async () => {
+    if (!vendorId) return null;
+    try {
+      const { data } = await db
+        .from('vendors')
+        .select('id, name, city')
+        .eq('id', vendorId)
+        .single();
+      return data;
+    } catch {
+      return null;
+    }
+  })();
+
+  const categoryPromise = (async () => {
+    if (!categoryId) return null;
+    try {
+      const { data } = await db
+        .from('categories')
+        .select('id, name, slug')
+        .eq('id', categoryId)
+        .single();
+      return data;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [mediaRows, vendor, category] = await Promise.all([
+    mediaPromise,
+    vendorPromise,
+    categoryPromise,
+  ]);
 
   const images = mediaRows
     .filter(m => m.media_type === 'image')
@@ -105,40 +141,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     });
 
   const video = mediaRows.find(m => m.media_type === 'video');
-
-  // Fetch vendor separately
-  const vendorId = product.vendor_id as string;
-  let vendor: { id: string; name: string; city: string } | null = null;
-  if (vendorId) {
-    try {
-      const supabase = await createServerSupabaseClient();
-      const { data } = await supabase
-        .from('vendors')
-        .select('id, name, city')
-        .eq('id', vendorId)
-        .single();
-      vendor = data;
-    } catch {
-      // vendor not found
-    }
-  }
-
-  // Fetch category separately
-  const categoryId = product.category_id as string;
-  let category: { id: string; name: string; slug: string } | null = null;
-  if (categoryId) {
-    try {
-      const supabase = await createServerSupabaseClient();
-      const { data } = await supabase
-        .from('categories')
-        .select('id, name, slug')
-        .eq('id', categoryId)
-        .single();
-      category = data;
-    } catch {
-      // category not found
-    }
-  }
 
   const productName = String(product.name || '');
   const productDescription = product.description ? String(product.description) : '';
@@ -259,7 +261,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="mt-6 p-4 bg-primary-50 rounded-lg text-sm text-gray-600">
-              <p>Paiement en 2 fois : acompte de {productDepositRate}% à la commande, solde à la livraison.</p>
+              <p>Modalités de paiement affichées au checkout. Selon la commande, un acompte de {productDepositRate}% peut être demandé ; les options de règlement du solde et de réception sont précisées avant validation.</p>
             </div>
           </div>
         </div>

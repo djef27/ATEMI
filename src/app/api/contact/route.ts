@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/request';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Nom requis').max(200),
@@ -8,10 +9,6 @@ const contactSchema = z.object({
   subject: z.string().min(1, 'Sujet requis').max(300),
   message: z.string().min(10, 'Message trop court').max(5000),
 });
-
-function getClientIp(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,12 +48,19 @@ export async function POST(request: NextRequest) {
       });
 
     if (insertError) {
-      // Table might not exist yet — log and return success anyway
-      console.error('contact_messages insert failed:', insertError.message);
+      console.error('contact_messages insert failed:', { code: insertError.code });
+      return NextResponse.json(
+        { success: false, error: 'Impossible d’envoyer votre message. Réessayez plus tard.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error: unknown) {
+    console.error(
+      '[CONTACT_SUBMISSION_ERROR]',
+      error instanceof Error ? error.name : 'Unknown error'
+    );
     return NextResponse.json(
       { success: false, error: 'Erreur interne du serveur' },
       { status: 500 }

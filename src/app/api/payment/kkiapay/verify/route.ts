@@ -115,6 +115,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify the amount and currency BEFORE persisting the transaction id.
+    // Persisting provider_transaction_id first would poison the unique index
+    // (provider, provider_transaction_id) for a later legitimate confirmation.
+    if (verification.amount !== payment.amount || payment.currency !== 'XOF') {
+      console.error('[KKIAPAY_AMOUNT_MISMATCH]', {
+        orderNumber: order.order_number,
+        expectedAmount: payment.amount,
+        verifiedAmount: verification.amount,
+        currency: payment.currency,
+      });
+      return NextResponse.json(
+        { success: false, error: 'Le montant vérifié ne correspond pas à la commande' },
+        { status: 400 }
+      );
+    }
+
     const { data: linkedPayment, error: linkedPaymentError } = await supabase
       .from('payments')
       .select('id')
@@ -150,19 +166,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Impossible d’enregistrer la transaction vérifiée' },
         { status: 500 }
-      );
-    }
-
-    if (verification.amount !== payment.amount || payment.currency !== 'XOF') {
-      console.error('[KKIAPAY_AMOUNT_MISMATCH]', {
-        orderNumber: order.order_number,
-        expectedAmount: payment.amount,
-        verifiedAmount: verification.amount,
-        currency: payment.currency,
-      });
-      return NextResponse.json(
-        { success: false, error: 'Le montant vérifié ne correspond pas à la commande' },
-        { status: 400 }
       );
     }
 

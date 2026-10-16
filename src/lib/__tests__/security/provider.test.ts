@@ -164,16 +164,16 @@ describe('Payment Provider Abstraction', () => {
     it('rejects KKiaPay Sandbox credentials in production', async () => {
       const originalEnv = {
         NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV,
         PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
         KKIAPAY_PUBLIC_KEY: process.env.KKIAPAY_PUBLIC_KEY,
         KKIAPAY_PRIVATE_KEY: process.env.KKIAPAY_PRIVATE_KEY,
         KKIAPAY_SECRET_KEY: process.env.KKIAPAY_SECRET_KEY,
         KKIAPAY_SANDBOX: process.env.KKIAPAY_SANDBOX,
       };
-      Object.defineProperty(process.env, 'NODE_ENV', {
-        value: 'production',
-        configurable: true,
-      });
+      const nodeEnvKey: string = 'NODE_ENV';
+      process.env[nodeEnvKey] = 'production';
+      process.env.VERCEL_ENV = 'production';
       process.env.PAYMENT_PROVIDER = 'kkiapay';
       process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
       process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
@@ -185,6 +185,43 @@ describe('Payment Provider Abstraction', () => {
 
       try {
         expect(() => getPaymentConfig()).toThrow('KKiaPay Sandbox ne peuvent pas être utilisées en production');
+      } finally {
+        resetPaymentConfig();
+        for (const [name, value] of Object.entries(originalEnv)) {
+          if (value === undefined) delete process.env[name];
+          else process.env[name] = value;
+        }
+      }
+    });
+
+    it('allows KKiaPay Sandbox credentials in a Vercel Preview deployment', async () => {
+      const originalEnv = {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV,
+        PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+        KKIAPAY_PUBLIC_KEY: process.env.KKIAPAY_PUBLIC_KEY,
+        KKIAPAY_PRIVATE_KEY: process.env.KKIAPAY_PRIVATE_KEY,
+        KKIAPAY_SECRET_KEY: process.env.KKIAPAY_SECRET_KEY,
+        KKIAPAY_SANDBOX: process.env.KKIAPAY_SANDBOX,
+      };
+      const nodeEnvKey: string = 'NODE_ENV';
+      process.env[nodeEnvKey] = 'production';
+      process.env.VERCEL_ENV = 'preview';
+      process.env.PAYMENT_PROVIDER = 'kkiapay';
+      process.env.KKIAPAY_PUBLIC_KEY = 'public-test';
+      process.env.KKIAPAY_PRIVATE_KEY = 'private-test';
+      process.env.KKIAPAY_SECRET_KEY = 'secret-test';
+      process.env.KKIAPAY_SANDBOX = 'true';
+
+      const { getPaymentConfig, resetPaymentConfig } = await import('@/lib/payment/config');
+      resetPaymentConfig();
+
+      try {
+        expect(getPaymentConfig()).toMatchObject({
+          provider: 'kkiapay',
+          sandbox: true,
+          isProduction: true,
+        });
       } finally {
         resetPaymentConfig();
         for (const [name, value] of Object.entries(originalEnv)) {

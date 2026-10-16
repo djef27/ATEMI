@@ -27,8 +27,8 @@ export default async function Footer() {
               <span className="text-xl font-serif font-bold">Atémi</span>
             </Link>
             <p className="text-sm text-gray-300 leading-relaxed mb-6">
-              Mode, chaussures, perruques et accessoires de qualité.
-              Payez en deux fois, recevez à domicile.
+              Une marketplace qui met en lumière les vendeurs et les créations d’Afrique.
+              Les marchés disponibles s’ouvrent progressivement.
             </p>
             <div className="flex gap-4">
               <a href="#" className="text-gray-300 hover:text-primary-400 transition-colors" aria-label="Instagram">

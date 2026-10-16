@@ -318,7 +318,7 @@ export default function CheckoutPage() {
 
         {/* Stock warnings */}
         {stockIssues.length > 0 && (
-          <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
+          <div role="alert" className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
             <div className="flex items-center gap-2 font-medium mb-2">
               <AlertTriangle className="w-4 h-4" />
               Problème de stock
@@ -332,7 +332,7 @@ export default function CheckoutPage() {
         )}
 
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+          <div role="alert" aria-live="assertive" className="mb-6 p-4 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
             {error}
           </div>
         )}
@@ -345,26 +345,26 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
-                  <input id="fullName" type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  <input id="fullName" name="name" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="Prénom et Nom" />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  <input id="email" name="email" type="email" autoComplete="email" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="email@exemple.com" />
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
-                  <input id="phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  <input id="phone" name="tel" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="+229 01 02 03 04" />
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                  <input id="whatsapp" type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  <input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="Optionnel — pour suivre votre commande via WhatsApp" />
                 </div>
               </div>
@@ -375,11 +375,11 @@ export default function CheckoutPage() {
               <h2 className="font-serif text-lg font-semibold text-[#1A1919] mb-4">Livraison</h2>
               <div className="flex items-center gap-4 mb-4">
                 <label className="flex items-center gap-2">
-                  <input type="radio" checked={deliveryRequired} onChange={() => setDeliveryRequired(true)} className="text-primary-800 focus:ring-primary-300" />
+                  <input type="radio" name="deliveryMethod" value="delivery" checked={deliveryRequired} onChange={() => setDeliveryRequired(true)} className="text-primary-800 focus-visible:ring-primary-300" />
                   <span className="text-sm text-gray-700">Livraison à domicile</span>
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="radio" checked={!deliveryRequired} onChange={() => setDeliveryRequired(false)} className="text-primary-800 focus:ring-primary-300" />
+                  <input type="radio" name="deliveryMethod" value="pickup" checked={!deliveryRequired} onChange={() => setDeliveryRequired(false)} className="text-primary-800 focus-visible:ring-primary-300" />
                   <span className="text-sm text-gray-700">Retrait</span>
                 </label>
               </div>
@@ -388,8 +388,8 @@ export default function CheckoutPage() {
               <div className="bg-white rounded-2xl border border-primary-100 p-6 shadow-sm">
                 <h2 className="font-serif text-lg font-semibold text-[#1A1919] mb-4">Paiement</h2>
                 <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Pays *</label>
-                <select id="country" value={country} onChange={(e) => setCountry(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300">
+                <select id="country" name="country" autoComplete="country" value={country} onChange={(e) => setCountry(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
                   <option value="BJ">Bénin</option>
                   <option value="CI">Côte d&apos;Ivoire</option>
                   <option value="TG">Togo</option>
@@ -397,7 +397,7 @@ export default function CheckoutPage() {
                 <div className="mt-4">
                   <p className="block text-sm font-medium text-gray-700 mb-2">Moyen disponible *</p>
                   {paymentMethods.length === 0 ? (
-                    <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                    <p role="status" aria-live="polite" className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
                       Aucun moyen n&apos;est configuré pour ce pays.
                     </p>
                   ) : (
@@ -405,7 +405,7 @@ export default function CheckoutPage() {
                       {paymentMethods.map((method) => (
                         <label key={method.id} className="flex items-center gap-3 p-3 rounded-lg border border-primary-100 hover:bg-primary-50 cursor-pointer">
                           <input type="radio" name="paymentMethod" value={method.id} checked={paymentMethod === method.id}
-                            onChange={() => setPaymentMethod(method.id)} className="text-primary-800 focus:ring-primary-300" />
+                            onChange={() => setPaymentMethod(method.id)} className="text-primary-800 focus-visible:ring-primary-300" />
                           <span className="text-sm text-[#1A1919]">{method.displayName}</span>
                         </label>
                       ))}
@@ -418,8 +418,8 @@ export default function CheckoutPage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-                    <input id="city" type="text" required list="delivery-cities" value={city} onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    <input id="city" name="address-level2" type="text" autoComplete="address-level2" required list="delivery-cities" value={city} onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="Choisissez votre ville…" />
                     <datalist id="delivery-cities">
                       {availableCities.map((c) => (
@@ -427,15 +427,15 @@ export default function CheckoutPage() {
                       ))}
                     </datalist>
                     {knownCity && deliveryZones.length > 0 && (
-                      <p className="mt-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-2.5">
+                      <p role="status" aria-live="polite" className="mt-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-2.5">
                         Livraison disponible à {knownCity.name} — à partir de {formatPrice(knownCity.min_fee)} selon la zone.
                       </p>
                     )}
                   </div>
                   <div>
                     <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Adresse complète *</label>
-                    <textarea id="address" required rows={2} value={address} onChange={(e) => setAddress(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 resize-none"
+                    <textarea id="address" name="street-address" autoComplete="street-address" required rows={2} value={address} onChange={(e) => setAddress(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 resize-none"
                       placeholder="Rue, quartier, point de repère (ex: en face de la pharmacie du quartier)" />
                   </div>
                   {deliveryZones.length > 0 && (
@@ -445,7 +445,7 @@ export default function CheckoutPage() {
                         {deliveryZones.map((zone) => (
                           <label key={zone.id} className="flex items-center gap-3 p-3 rounded-lg border border-primary-100 hover:bg-primary-50 cursor-pointer">
                             <input type="radio" name="deliveryZone" value={zone.id} checked={deliveryZoneId === zone.id}
-                              onChange={() => setDeliveryZoneId(zone.id)} className="text-primary-800 focus:ring-primary-300" />
+                              onChange={() => setDeliveryZoneId(zone.id)} className="text-primary-800 focus-visible:ring-primary-300" />
                             <div className="flex-1">
                               <span className="text-sm font-medium text-[#1A1919]">{zone.name}</span>
                               <span className="text-sm text-gray-500 ml-2">— {formatPrice(zone.fee)}</span>
@@ -467,8 +467,9 @@ export default function CheckoutPage() {
             {/* Notes */}
             <div className="bg-white rounded-2xl border border-primary-100 p-6 shadow-sm">
               <h2 className="font-serif text-lg font-semibold text-[#1A1919] mb-4">Notes</h2>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 resize-none"
+              <textarea id="notes" name="order-notes" autoComplete="off" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 resize-none"
+                aria-label="Instructions spéciales pour la commande"
                 placeholder="Instructions spéciales (optionnel)" />
             </div>
 
@@ -503,9 +504,9 @@ export default function CheckoutPage() {
               </div>
 
               <button type="submit" disabled={loading || stockIssues.length > 0}
-                className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
                 {loading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" />Redirection vers le paiement...</>
+                  <span role="status" aria-live="polite" className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />Redirection vers le paiement…</span>
                 ) : (
                   `Confirmer — Acompte ${formatPrice(totalDeposit)}`
                 )}

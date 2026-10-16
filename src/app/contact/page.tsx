@@ -98,13 +98,13 @@ export default function ContactPage() {
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                     <input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="Votre nom" />
                   </div>
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                     <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                       placeholder="votre@email.com" />
                   </div>
                 </div>
@@ -112,15 +112,15 @@ export default function ContactPage() {
                 <div>
                   <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Sujet *</label>
                   <input id="subject" type="text" required value={subject} onChange={(e) => setSubject(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
                     placeholder="Objet de votre message" />
                 </div>
 
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message *</label>
                   <textarea id="message" required rows={5} value={message} onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 resize-none"
-                    placeholder="Décrivez votre demande..." />
+                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 resize-none"
+                    placeholder="Décrivez votre demande…" />
                 </div>
 
                 <button type="submit" disabled={loading}

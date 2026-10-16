@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient, createServerSupabaseClient } from '@/lib/supabase/server';
 import { dispatchPendingNotifications } from '@/lib/notifications/dispatcher';
-import { isAllowedOrigin } from '@/lib/auth-helpers';
+import { isAllowedOrigin, requireAdminAuth } from '@/lib/auth-helpers';
 
 /**
  * POST /api/notifications/dispatch
@@ -28,16 +28,19 @@ export async function POST(request: NextRequest) {
     if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
       isAdmin = true;
     } else {
+      if (!isAllowedOrigin(request)) {
+        return NextResponse.json({ success: false, error: 'Origine non autorisée' }, { status: 403 });
+      }
       // Check admin session
       const authSupabase = await createServerSupabaseClient();
       const { data: { user } } = await authSupabase.auth.getUser();
       if (user) {
         const { data: profile } = await authSupabase
           .from('profiles')
-          .select('role')
+          .select('role, is_active')
           .eq('id', user.id)
           .single();
-        isAdmin = profile?.role === 'admin';
+        isAdmin = profile?.role === 'admin' && profile.is_active;
       }
     }
 
@@ -67,14 +70,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET returns pending count for dashboard display
+// Vercel Cron dispatches with CRON_SECRET; authenticated admin GETs return the dashboard count.
 export async function GET(request: NextRequest) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
+      const supabase = createAdminSupabaseClient();
+      const summary = await dispatchPendingNotifications({ supabase });
+      return NextResponse.json({
+        success: true,
+        processed: summary.claimed,
+        sent: summary.sent,
+        retried: summary.retried,
+        failed: summary.failed,
+      });
+    }
+
     if (!isAllowedOrigin(request)) {
       return NextResponse.json({ success: false, error: 'Origine non autorisée' }, { status: 403 });
     }
 
-    const supabase = createAdminSupabaseClient();
+    const auth = await requireAdminAuth(request);
+    if ('error' in auth) return auth.error;
+
+    const supabase = auth.supabase;
     const { count, error } = await supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })

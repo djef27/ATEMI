@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/request';
 import { z } from 'zod';
 
 const stockCheckSchema = z.object({
@@ -13,7 +14,7 @@ const stockCheckSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 30 stock checks per minute per IP
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'anonymous';
+    const ip = getClientIp(request);
     const rl = await checkRateLimit(`stock:${ip}`, RATE_LIMIT_CONFIGS.general);
     if (!rl.allowed) {
       return NextResponse.json(

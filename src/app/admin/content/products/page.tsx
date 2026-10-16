@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Zap, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useToast } from '@/components/toast-provider';
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface PipelineStatus {
 }
 
 export default function ProductsPage() {
+  const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -57,13 +59,13 @@ export default function ProductsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Analyse terminée !');
+        showToast('Analyse terminée !');
         fetchProducts();
       } else {
-        alert(data.error || 'Erreur lors de l\'analyse');
+        showToast(data.error || 'Erreur lors de l\'analyse', 'error');
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setAnalyzing(null);
     }
@@ -78,13 +80,13 @@ export default function ProductsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`${data.data.conceptsCount} concepts générés !`);
+        showToast(`${data.data.conceptsCount} concepts générés !`);
         fetchProducts();
       } else {
-        alert(data.error || 'Erreur lors de la génération');
+        showToast(data.error || 'Erreur lors de la génération', 'error');
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setGenerating(null);
     }
@@ -109,7 +111,7 @@ export default function ProductsPage() {
           placeholder="Rechercher un produit..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-primary-100 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-primary-100 bg-white text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
         />
       </div>
 

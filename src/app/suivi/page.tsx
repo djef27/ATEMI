@@ -39,15 +39,14 @@ interface EmailLookupResult {
   found: boolean;
   order_number: string;
   tracking_token: string;
-  order_status: string;
-  payment_status: string;
+  status: string;
   total_amount: number;
   deposit_amount: number;
-  remaining_amount: number;
+  delivery_balance: number;
   currency: string;
-  customer_first_name: string;
+  customer_name: string;
   customer_phone: string;
-  city: string;
+  delivery_city: string;
   created_at: string;
 }
 
@@ -105,12 +104,14 @@ export default function SuiviPage() {
     setLoading(true);
 
     try {
-      const { data, error: rpcError } = await supabase.rpc('get_order_by_email', {
-        p_order_number: orderNum.trim(),
-        p_email: emailAddr.trim(),
+      const response = await fetch('/api/order/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_number: orderNum.trim(), email: emailAddr.trim() }),
       });
+      const data = await response.json();
 
-      if (rpcError || !data || !data.found) {
+      if (!response.ok || !data?.found) {
         setError('Commande non trouvée. Vérifiez votre numéro de commande et adresse e-mail.');
         return;
       }
@@ -177,8 +178,8 @@ export default function SuiviPage() {
                   type="text"
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
-                  placeholder="ATM-20260827-..."
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent font-mono text-sm"
+                  placeholder="ATM-20260827-…"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent font-mono text-sm"
                 />
               </div>
               <div>
@@ -191,7 +192,7 @@ export default function SuiviPage() {
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
                   placeholder="UUID de suivi"
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent font-mono text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent font-mono text-sm"
                 />
               </div>
               <button
@@ -200,7 +201,7 @@ export default function SuiviPage() {
                 className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
-                {loading ? 'Recherche...' : 'Chercher'}
+                {loading ? 'Recherche…' : 'Chercher'}
               </button>
             </form>
           ) : (
@@ -214,8 +215,8 @@ export default function SuiviPage() {
                   type="text"
                   value={emailOrderNumber}
                   onChange={(e) => setEmailOrderNumber(e.target.value)}
-                  placeholder="ATM-20260827-..."
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent font-mono text-sm"
+                  placeholder="ATM-20260827-…"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent font-mono text-sm"
                 />
               </div>
               <div>
@@ -228,7 +229,7 @@ export default function SuiviPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@exemple.com"
-                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent text-sm"
                 />
               </div>
               <button
@@ -237,7 +238,7 @@ export default function SuiviPage() {
                 className="w-full py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
-                {loading ? 'Recherche...' : 'Chercher'}
+                {loading ? 'Recherche…' : 'Chercher'}
               </button>
             </form>
           )}
@@ -257,11 +258,7 @@ export default function SuiviPage() {
                   Commande {order.order_number}
                 </h2>
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-700">
-                  {statusLabels[
-                    ('status' in order ? order.status : null) ||
-                    ('order_status' in order ? order.order_status : '') ||
-                    ''
-                  ] || ('status' in order ? order.status : '') || ('order_status' in order ? order.order_status : '')}
+                  {statusLabels[order.status] || order.status}
                 </span>
               </div>
 
@@ -277,13 +274,7 @@ export default function SuiviPage() {
                 <div>
                   <span className="text-gray-500">Solde restant</span>
                   <p className="font-medium text-gray-700">
-                    {formatPrice(
-                      'remaining_amount' in order
-                        ? order.remaining_amount
-                        : 'delivery_balance' in order
-                          ? (order as TrackingOrder).delivery_balance
-                          : 0
-                    )}
+                    {formatPrice(order.delivery_balance)}
                   </p>
                 </div>
                 <div>
@@ -293,7 +284,7 @@ export default function SuiviPage() {
                       ? order.delivery_required
                         ? order.delivery_city
                         : 'Retrait'
-                      : order.city || '-'}
+                      : order.delivery_city || '-'}
                   </p>
                 </div>
               </div>

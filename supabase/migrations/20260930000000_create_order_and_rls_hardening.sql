@@ -61,7 +61,7 @@ BEGIN
         UPDATE public.orders o
         SET vendor_id = sub.vendor_id
         FROM (
-            SELECT oi.order_id, MIN(oi.vendor_id) AS vendor_id
+            SELECT oi.order_id, MIN(oi.vendor_id::text)::uuid AS vendor_id
             FROM public.order_items oi
             GROUP BY oi.order_id
             HAVING COUNT(DISTINCT oi.vendor_id) = 1

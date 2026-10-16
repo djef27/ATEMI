@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Save, Loader2, CheckCircle } from 'lucide-react';
+import { useToast } from '@/components/toast-provider';
 
 interface BrandConfig {
   brandName: string;
@@ -20,6 +21,7 @@ interface CostLimits {
 }
 
 export default function SettingsPage() {
+  const { showToast } = useToast();
   const [brand, setBrand] = useState<BrandConfig>({
     brandName: 'Atémi',
     primaryColor: '#C5A880',
@@ -71,7 +73,7 @@ export default function SettingsPage() {
         setTimeout(() => setSaved(false), 2000);
       }
     } catch {
-      alert('Erreur lors de la sauvegarde');
+      showToast('Erreur lors de la sauvegarde', 'error');
     } finally {
       setSaving(false);
     }
@@ -118,7 +120,7 @@ export default function SettingsPage() {
               type="text"
               value={brand.brandName}
               onChange={(e) => setBrand({ ...brand, brandName: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
           <div>
@@ -126,7 +128,7 @@ export default function SettingsPage() {
             <select
               value={brand.defaultLanguage}
               onChange={(e) => setBrand({ ...brand, defaultLanguage: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             >
               <option value="fr">Français</option>
               <option value="en">English</option>
@@ -145,7 +147,7 @@ export default function SettingsPage() {
                 type="text"
                 value={brand.primaryColor}
                 onChange={(e) => setBrand({ ...brand, primaryColor: e.target.value })}
-                className="flex-1 px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="flex-1 px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
               />
             </div>
           </div>
@@ -155,7 +157,7 @@ export default function SettingsPage() {
               type="text"
               value={brand.defaultCTA}
               onChange={(e) => setBrand({ ...brand, defaultCTA: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
         </div>
@@ -173,7 +175,7 @@ export default function SettingsPage() {
               min="0"
               value={limits.maxDailyCost}
               onChange={(e) => setLimits({ ...limits, maxDailyCost: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
           <div>
@@ -184,7 +186,7 @@ export default function SettingsPage() {
               min="0"
               value={limits.maxMonthlyCost}
               onChange={(e) => setLimits({ ...limits, maxMonthlyCost: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
           <div>
@@ -195,7 +197,7 @@ export default function SettingsPage() {
               min="0"
               value={limits.maxDailyGenerations}
               onChange={(e) => setLimits({ ...limits, maxDailyGenerations: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
           <div>
@@ -206,7 +208,7 @@ export default function SettingsPage() {
               min="0"
               value={limits.maxMonthlyGenerations}
               onChange={(e) => setLimits({ ...limits, maxMonthlyGenerations: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full px-3 py-2 rounded-lg border border-primary-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
             />
           </div>
         </div>

@@ -414,7 +414,7 @@ const MediaUpload = forwardRef<MediaUploadHandle, MediaUploadProps>(
             {uploading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Upload en cours...
+                Upload en cours…
               </>
             ) : (
               <>

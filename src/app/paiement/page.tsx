@@ -208,10 +208,10 @@ function PaiementForm() {
           return;
         }
 
-        setError('Reponse inattendue du serveur.');
+        setError('Réponse inattendue du serveur.');
         setPaymentState('error');
       } catch {
-        setError('Une erreur est survenue. Verifiez votre connexion.');
+        setError('Une erreur est survenue. Vérifiez votre connexion.');
         setPaymentState('error');
       }
     };
@@ -277,10 +277,10 @@ function PaiementForm() {
   if (paymentState === 'loading' || paymentState === 'redirecting' || paymentState === 'verifying') {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
-        <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">
-          {paymentState === 'redirecting' ? 'Redirection vers la page de paiement...' :
-            paymentState === 'verifying' ? 'Vérification sécurisée du paiement...' : 'Chargement...'}
+        <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-4" aria-hidden="true" />
+        <p className="text-gray-600" role="status" aria-live="polite">
+          {paymentState === 'redirecting' ? 'Redirection vers la page de paiement…' :
+            paymentState === 'verifying' ? 'Vérification sécurisée du paiement…' : 'Chargement…'}
         </p>
       </div>
     );
@@ -369,7 +369,7 @@ function PaiementForm() {
           }}
           className="px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {kkiapayScriptReady ? 'Payer avec KKiaPay' : 'Chargement du paiement...'}
+          {kkiapayScriptReady ? 'Payer avec KKiaPay' : 'Chargement du paiement…'}
         </button>
         <p className="text-xs text-gray-500 mt-4">Votre commande est confirmée uniquement après vérification du paiement par notre serveur.</p>
       </div>
@@ -384,7 +384,7 @@ function PaiementForm() {
           Ce lien de paiement est incomplet ou incorrect.
         </p>
         <Link href="/" className="text-primary-600 hover:text-primary-500 font-medium">
-          Retour a l&apos;accueil
+          Retour à l&apos;accueil
         </Link>
       </div>
     );
@@ -394,9 +394,9 @@ function PaiementForm() {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="w-10 h-10 text-green-600" />
+          <CheckCircle className="w-10 h-10 text-green-600" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">Paiement deja confirme</h1>
+        <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">Paiement déjà confirmé</h1>
         <p className="text-gray-600 mb-8">
           Le paiement est confirmé. Votre reçu est disponible.
         </p>
@@ -420,7 +420,7 @@ function PaiementForm() {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
         <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="w-10 h-10 text-amber-600" />
+          <CheckCircle className="w-10 h-10 text-amber-600" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">
           Paiement reçu, confirmation en cours
@@ -451,7 +451,7 @@ function PaiementForm() {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-          <XCircle className="w-10 h-10 text-red-500" />
+          <XCircle className="w-10 h-10 text-red-500" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">Paiement échoué</h1>
         <p className="text-gray-600 mb-8">
@@ -470,22 +470,22 @@ function PaiementForm() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
       <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-        <XCircle className="w-10 h-10 text-red-500" />
+        <XCircle className="w-10 h-10 text-red-500" aria-hidden="true" />
       </div>
       <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">Erreur de paiement</h1>
-      <p className="text-gray-600 mb-8">{error}</p>
+      <p className="text-gray-600 mb-8" role="alert">{error}</p>
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <button
           onClick={() => window.location.reload()}
           className="px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 transition-colors"
         >
-          Reessayer
+          Réessayer
         </button>
         <Link
           href="/"
           className="px-6 py-3 rounded-lg border border-primary-200 text-gray-700 font-medium hover:bg-[#FAFAF8] transition-colors"
         >
-          Retour a l&apos;accueil
+          Retour à l&apos;accueil
         </Link>
       </div>
     </div>
@@ -497,7 +497,7 @@ export default function PaiementPage() {
     <main className="min-h-screen bg-[#FAFAF8]">
       <Suspense fallback={
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" aria-hidden="true" />
         </div>
       }>
         <PaiementForm />

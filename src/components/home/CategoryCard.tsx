@@ -13,7 +13,7 @@ export default function CategoryCard({ name, slug, imageUrl }: CategoryCardProps
 
   return (
     <Link href={`/products?category=${slug}`} className="group block">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-[1.6rem] border border-[#f0e7df] bg-[#f6efe8] shadow-[0_18px_48px_rgba(61,44,31,0.10)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_22px_56px_rgba(61,44,31,0.14)]">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-[1.6rem] border border-[#f0e7df] bg-[#f6efe8] shadow-[0_18px_48px_rgba(61,44,31,0.10)] transition-[transform,box-shadow] duration-500 motion-reduce:transition-none hover:-translate-y-1 hover:shadow-[0_22px_56px_rgba(61,44,31,0.14)]">
         <Image
           src={finalImage}
           alt={name}

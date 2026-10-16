@@ -9,6 +9,7 @@ import type { ProductCreateInput } from '@/lib/validations';
 import type { UploadedMedia, MediaUploadHandle } from '@/components/media-upload';
 import MediaUpload from '@/components/media-upload';
 import { formatPrice } from '@/lib/utils';
+import { useToast } from '@/components/toast-provider';
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   active: { label: 'Actif', color: 'bg-green-100 text-green-700' },
@@ -41,6 +42,7 @@ function getTimeRemaining(deletedAt: string): string {
 
 export default function VendorProduitsPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [products, setProducts] = useState<ProductWithImage[]>([]);
   const [trashedProducts, setTrashedProducts] = useState<ProductWithImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -459,7 +461,7 @@ export default function VendorProduitsPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        alert(data.error || 'Erreur lors de la suppression');
+        showToast(data.error || 'Erreur lors de la suppression', 'error');
         return;
       }
 
@@ -469,7 +471,7 @@ export default function VendorProduitsPage() {
         await fetchTrashedProducts(vendorId);
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -491,7 +493,7 @@ export default function VendorProduitsPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        alert(data.error || 'Erreur lors de la restauration');
+        showToast(data.error || 'Erreur lors de la restauration', 'error');
         return;
       }
 
@@ -501,7 +503,7 @@ export default function VendorProduitsPage() {
         await fetchTrashedProducts(vendorId);
       }
     } catch {
-      alert('Erreur réseau');
+      showToast('Erreur réseau', 'error');
     } finally {
       setRestoreLoading(false);
     }
@@ -760,21 +762,21 @@ export default function VendorProduitsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                 <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
                   placeholder="Nom du produit" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value || null })} rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none"
                   placeholder="Description du produit (optionnel)" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie <span className="text-red-500">*</span></label>
                 <select required value={form.category_id || ''} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent">
                   <option value="">Sélectionner une catégorie</option>
                   {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                 </select>
@@ -785,19 +787,19 @@ export default function VendorProduitsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Prix fournisseur (FCFA) *</label>
                   <input type="number" required min="0" step="1" value={form.supplier_price || ''}
                     onChange={(e) => setForm({ ...form, supplier_price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Prix de vente (FCFA) *</label>
                   <input type="number" required min="0" step="1" value={form.selling_price || ''}
                     onChange={(e) => setForm({ ...form, selling_price: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Acompte (%) *</label>
                   <input type="number" required min="0" max="100" step="1" value={form.deposit_rate ?? 50}
                     onChange={(e) => setForm({ ...form, deposit_rate: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
               </div>
 
@@ -812,12 +814,12 @@ export default function VendorProduitsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stock *</label>
                   <input type="number" required min="0" step="1" value={form.stock || ''}
                     onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                   <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProductCreateInput['status'] })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent">
                     <option value="draft">Brouillon</option>
                     <option value="active">Actif</option>
                     <option value="inactive">Inactif</option>
@@ -876,19 +878,19 @@ export default function VendorProduitsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                   <input type="text" required value={editForm.name as string || ''}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea value={editForm.description as string || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value || null })} rows={3}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none" />
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent resize-none" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie <span className="text-red-500">*</span></label>
                   <select required value={editForm.category_id as string || ''} onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent">
                     <option value="">Sélectionner une catégorie</option>
                     {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                   </select>
@@ -899,19 +901,19 @@ export default function VendorProduitsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Prix fournisseur (FCFA)</label>
                     <input type="number" min="0" step="1" value={editForm.supplier_price as number || ''}
                       onChange={(e) => setEditForm({ ...editForm, supplier_price: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Prix de vente (FCFA) *</label>
                     <input type="number" required min="0" step="1" value={editForm.selling_price as number || ''}
                       onChange={(e) => setEditForm({ ...editForm, selling_price: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Acompte (%)</label>
                     <input type="number" min="0" max="100" step="1" value={editForm.deposit_rate as number ?? 50}
                       onChange={(e) => setEditForm({ ...editForm, deposit_rate: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                   </div>
                 </div>
 
@@ -926,12 +928,12 @@ export default function VendorProduitsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Stock *</label>
                     <input type="number" required min="0" step="1" value={editForm.stock as number || ''}
                       onChange={(e) => setEditForm({ ...editForm, stock: Number(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
                     <select value={editForm.status as string || 'draft'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent">
                       <option value="draft">Brouillon</option>
                       <option value="active">Actif</option>
                       <option value="inactive">Inactif</option>

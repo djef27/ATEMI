@@ -133,8 +133,8 @@ export default function RecuPage() {
                 type="text"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
-                placeholder="CMD-20260827-..."
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent font-mono text-sm"
+                placeholder="CMD-20260827-…"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent font-mono text-sm"
               />
             </div>
             <div>
@@ -147,7 +147,7 @@ export default function RecuPage() {
                 value={trackingToken}
                 onChange={(e) => setTrackingToken(e.target.value)}
                 placeholder="UUID de suivi"
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent font-mono text-sm"
               />
             </div>
             <div className="flex gap-3">
@@ -157,7 +157,7 @@ export default function RecuPage() {
                 className="flex-1 py-3 px-4 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
-                {loading ? 'Recherche...' : 'Voir le reçu'}
+                {loading ? 'Recherche…' : 'Voir le reçu'}
               </button>
               {receipt && (
                 <button

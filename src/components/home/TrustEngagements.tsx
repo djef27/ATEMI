@@ -6,22 +6,22 @@ const engagements = [
   {
     icon: Truck,
     title: 'Livraison fiable',
-    description: 'Livraison à domicile dans tout le Bénin. Vous suivez votre commande en temps réel.',
+    description: 'Les options et zones de livraison disponibles sont précisées au moment de la commande.',
   },
   {
     icon: CreditCard,
-    title: 'Paiement en 2 fois',
-    description: 'Payez un acompte à la commande, le solde à la livraison. Simple et sécurisé.',
+    title: 'Paiement transparent',
+    description: 'Les moyens de paiement disponibles pour votre marché sont indiqués au checkout.',
   },
   {
     icon: Shield,
-    title: 'Achat sécurisé',
-    description: 'Transactions sécurisées et données protégées. Vos informations sont en sécurité.',
+    title: 'Informations protégées',
+    description: 'Consultez notre politique de confidentialité pour savoir comment vos données sont traitées.',
   },
   {
     icon: MessageCircle,
     title: 'Support WhatsApp',
-    description: 'Une question ? Contactez-nous directement sur WhatsApp. Réponse rapide garantie.',
+    description: 'Une question sur un produit ou une commande ? Écrivez-nous sur WhatsApp.',
   },
 ];
 
@@ -45,8 +45,8 @@ export default function TrustEngagements() {
             const Icon = item.icon;
             return (
               <ScrollReveal key={idx} delay={idx * 100}>
-                <div className="text-center group p-6 rounded-2xl bg-white/50 backdrop-blur-sm border border-primary-100/50 hover:bg-white hover:shadow-lg hover:shadow-primary-200/20 transition-all duration-300 hover:-translate-y-1">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-100 to-primary-200 text-primary-800 flex items-center justify-center mx-auto mb-5 group-hover:from-primary-200 group-hover:to-primary-300 transition-all duration-300 shadow-sm">
+                <div className="text-center group p-6 rounded-2xl bg-white/50 backdrop-blur-sm border border-primary-100/50 hover:bg-white hover:shadow-lg hover:shadow-primary-200/20 transition-[background-color,box-shadow,transform] duration-300 motion-reduce:transition-none hover:-translate-y-1">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-100 to-primary-200 text-primary-800 flex items-center justify-center mx-auto mb-5 group-hover:from-primary-200 group-hover:to-primary-300 transition-[background-image,box-shadow] duration-300 motion-reduce:transition-none shadow-sm">
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="font-serif font-semibold text-[#1A1919] mb-2">

@@ -80,7 +80,7 @@ export default function MesCommandesPage() {
                 <Link
                   key={order.id}
                   href={`/mes-commandes/${order.id}`}
-                  className="block bg-white rounded-2xl border border-primary-100 shadow-sm p-4 sm:p-5 hover:shadow-md hover:border-primary-200 transition-all"
+                  className="block bg-white rounded-2xl border border-primary-100 shadow-sm p-4 sm:p-5 hover:shadow-md hover:border-primary-200 transition-[box-shadow,border-color]"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">

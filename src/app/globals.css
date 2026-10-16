@@ -18,19 +18,19 @@
 
 @layer components {
   .btn-primary {
-    @apply px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
   }
 
   .btn-secondary {
-    @apply px-6 py-3 rounded-lg border border-primary-300 text-primary-900 font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply px-6 py-3 rounded-lg border border-primary-300 text-primary-900 font-medium hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
   }
 
   .btn-accent {
-    @apply px-6 py-3 rounded-lg bg-rose-500 text-white font-medium hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply px-6 py-3 rounded-lg bg-rose-500 text-white font-medium hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
   }
 
   .input-base {
-    @apply w-full px-4 py-3 rounded-lg border border-primary-200 bg-white text-[#1A1919] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-colors;
+    @apply w-full px-4 py-3 rounded-lg border border-primary-200 bg-white text-[#1A1919] placeholder-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors;
   }
 
   .card {

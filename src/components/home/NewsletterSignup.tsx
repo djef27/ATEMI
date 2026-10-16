@@ -72,12 +72,12 @@ export default function NewsletterSignup() {
                   onChange={(e) => setValue(e.target.value)}
                   placeholder="Votre email ou numéro WhatsApp"
                   required
-                  className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent text-sm transition-all duration-300 focus:bg-white/15"
+                  className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:border-transparent text-sm transition-colors duration-300 focus-visible:bg-white/15"
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-3.5 rounded-xl bg-white text-[#1A1919] font-semibold text-sm hover:bg-gray-100 transition-all duration-300 hover:shadow-lg shrink-0 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="px-6 py-3.5 rounded-xl bg-white text-[#1A1919] font-semibold text-sm hover:bg-gray-100 transition-[background-color,box-shadow] duration-300 hover:shadow-lg shrink-0 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "S'inscrire"}
                 </button>

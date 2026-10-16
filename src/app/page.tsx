@@ -9,13 +9,12 @@ import HowItWorks from '@/components/home/HowItWorks';
 import CtaSection from '@/components/home/CtaSection';
 import { getNewProducts, getBestSellers, type HomeProduct } from '@/lib/supabase/queries';
 import type { Metadata } from 'next';
-
-export const revalidate = 60;
+import { connection } from 'next/server';
 
 export const metadata: Metadata = {
-  title: 'Atémi — Mode, Chaussures & Accessoires au Bénin',
+  title: 'Atémi — La marketplace des talents africains',
   description:
-    'Découvrez une sélection de produits de qualité chez les meilleurs vendeurs du Bénin. Payez en deux fois : acompte à la commande, solde à la livraison.',
+    'Découvrez les créations et les vendeurs d’Afrique sur Atémi. Notre premier marché est le Bénin ; les moyens de paiement et zones de livraison disponibles sont précisés selon votre pays.',
 };
 
 async function safeGetProducts(
@@ -30,6 +29,8 @@ async function safeGetProducts(
 }
 
 export default async function Home() {
+  await connection();
+
   const [newProducts, bestSellers] = await Promise.all([
     safeGetProducts(getNewProducts, 8),
     safeGetProducts(getBestSellers, 8),

@@ -12,6 +12,7 @@ import {
   storeIdempotencyResponse,
   type IdempotencyContext,
 } from '@/lib/idempotency';
+import { getClientIp } from '@/lib/request';
 
 /**
  * POST /api/orders
@@ -45,10 +46,6 @@ const createOrderSchema = z.object({
   customer_notes: z.string().max(500).nullable().optional(),
   items: z.array(orderItemSchema).min(1, 'Panier vide').max(20, 'Trop d\'articles'),
 });
-
-function getClientIp(request: NextRequest): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
-}
 
 export async function POST(request: NextRequest) {
   try {

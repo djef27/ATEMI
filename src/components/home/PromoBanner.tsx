@@ -25,12 +25,12 @@ export default function PromoBanner() {
                 disponible
               </h2>
               <p className="text-gray-300 mb-8 max-w-md">
-                Découvrez les dernières tendances de la mode béninoise.
-                Pièces uniques, stocks limités.
+                Découvrez une sélection de mode, beauté et accessoires auprès des vendeurs Atémi.
+                La disponibilité varie selon les produits et les marchés ouverts.
               </p>
               <Link
                 href="/products"
-                className="inline-block px-8 py-4 rounded-xl bg-white text-[#1A1919] font-semibold hover:bg-gray-100 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]"
+                className="inline-block px-8 py-4 rounded-xl bg-white text-[#1A1919] font-semibold hover:bg-gray-100 transition-[background-color,box-shadow,transform] duration-300 motion-reduce:transition-none hover:shadow-lg hover:scale-[1.02]"
               >
                 Explorer maintenant
               </Link>

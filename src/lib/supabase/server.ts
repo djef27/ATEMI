@@ -30,6 +30,22 @@ function assertSupabaseReady({ url, anonKey }: { url?: string; anonKey?: string 
   }
 }
 
+export async function createPublicServerSupabaseClient() {
+  const config = getSupabaseConfig();
+  assertSupabaseReady(config);
+
+  return createServerClient(config.url!, config.anonKey!, {
+    cookies: {
+      getAll() {
+        return [];
+      },
+      setAll() {
+        // Public reads do not need request cookies.
+      },
+    },
+  });
+}
+
 export async function createServerSupabaseClient() {
   const config = getSupabaseConfig();
   assertSupabaseReady(config);

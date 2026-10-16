@@ -1,10 +1,25 @@
-# PRODUCTION PAYMENT SETUP
+# Production payment setup
+
+## Additional read-only DNS and migration status — 2026-10-13
+
+The domain delegation currently lists four NS1 (`p01.nsone.net`) and four
+Squarespace nameservers. The apex resolves to Squarespace, while the MX records
+for Proton Mail remain present at priorities 10 and 20. No DNS records were
+changed. The existing Vercel project is not visible to the authenticated CLI
+account, so the project's exact A/CNAME targets cannot be confirmed; do not
+apply generic Vercel DNS values or change nameservers.
+
+The last successful remote migration inventory ends at
+`20261009190000`; refreshing it later failed on temporary PostgreSQL-role
+authentication. `20261011120000_restrict_order_email_recovery.sql` remains
+pending, and the local-only additive migration
+`20261013100000_scope_orders_vendor_read_to_authenticated.sql` is also pending.
+Neither was applied remotely. Supabase lists no backup and PITR is disabled;
+no restorable backup or restore test is confirmed.
 
 ## Overview
 
 This document describes how to configure Atémi for real payment processing in production.
-
----
 
 ## Architecture
 
@@ -29,8 +44,6 @@ Client → Checkout → POST /api/orders → Order created (pending_payment)
                                             ↓
                                     Notifications sent
 ```
-
----
 
 ## Environment Variables
 
@@ -76,8 +89,6 @@ Client → Checkout → POST /api/orders → Order created (pending_payment)
 | `WHATSAPP_API_URL` | WhatsApp API URL | From provider |
 | `WHATSAPP_API_TOKEN` | WhatsApp API token | From provider |
 
----
-
 ## Development Setup
 
 ```bash
@@ -91,8 +102,6 @@ WHATSAPP_PROVIDER=mock
 - No real transactions
 - In-memory rate limiting
 - Console logs for WhatsApp messages
-
----
 
 ## Production Setup
 
@@ -110,9 +119,12 @@ CINETPAY_SITE_ID=xxx
 CINETPAY_SECRET_KEY=xxx
 ```
 
-CinetPay notifications are not trusted as proof of payment. The webhook calls
-`/v2/payment/check` and only confirms the order when the provider reports a
-successful transaction with the expected amount and currency.
+CinetPay notifications are not signed and are only hints. The webhook calls
+`/v2/payment/check` and derives every state transition from that provider
+response: the event-declared outcome (`cpm_result`) is never trusted, so a
+forged failure event cannot downgrade a successful payment. Refund transitions
+are refused unless confirmed by the provider API and require manual
+reconciliation otherwise.
 
 ### 1.1 Payment Provider (KKiaPay)
 
@@ -123,7 +135,7 @@ successful transaction with the expected amount and currency.
 4. Test with the Sandbox phone numbers before switching to Live credentials and
    setting `KKIAPAY_SANDBOX=false`
 
-**Important:** Adding the KKiaPay keys alone is not enough to launch. Production
+Important: Adding the KKiaPay keys alone is not enough to launch. Production
 also requires the Supabase project keys and deployed database migrations, a
 public HTTPS `NEXT_PUBLIC_APP_URL`, and Upstash Redis credentials. The app
 deliberately refuses to accept KKiaPay Sandbox credentials in production.
@@ -131,8 +143,10 @@ deliberately refuses to accept KKiaPay Sandbox credentials in production.
 The checkout opens KKiaPay's JavaScript widget. The browser's success event is
 only a notification: `/api/payment/kkiapay/verify` verifies the transaction with
 the official server SDK and checks its transaction ID, amount, currency, order,
-and tracking token before marking the order paid. KKiaPay therefore does not use
-the generic `/api/payment/webhook` endpoint.
+and tracking token before marking the order paid. The amount + currency check
+runs BEFORE `provider_transaction_id` is persisted, so a divergent transaction
+cannot poison the unique `(provider, provider_transaction_id)` index. KKiaPay
+therefore does not use the generic `/api/payment/webhook` endpoint.
 
 ### 2. Supabase
 
@@ -140,7 +154,14 @@ the generic `/api/payment/webhook` endpoint.
 2. Ensure `confirm_deposit_payment` function is deployed
 3. Ensure `idempotency_keys` table exists
 4. Deploy all migrations from `supabase/migrations/`
-5. Before applying the unique provider-reference migration to an existing database,
+5. `20261009190000_restrict_order_rpc_execution.sql` is applied to the production
+   database (2026-10-11, after validation and approval). It restricts `create_order`
+   to `service_role` and keeps the vendor RLS helpers `order_has_vendor_items` and
+   `get_my_vendor_id` executable only by `authenticated` and `service_role`; the
+   order API already invokes `create_order` with the server-side admin client. The
+   migration checks effective grants and aborts if they do not match the expected
+   policy.
+6. Before applying the unique provider-reference migration to an existing database,
    check for duplicate `(provider, provider_transaction_id)` pairs and reconcile
    any rows it reports:
 
@@ -151,6 +172,82 @@ WHERE provider IS NOT NULL AND provider_transaction_id IS NOT NULL
 GROUP BY provider, provider_transaction_id
 HAVING count(*) > 1;
 ```
+
+7. `20261011120000_restrict_order_email_recovery.sql` is prepared locally but NOT
+   applied. A read-only production query on 2026-10-13 confirmed that both
+   `anon` and `authenticated` can still execute the `SECURITY DEFINER`
+   `get_order_by_email` RPC. It returns tracking tokens and customer data, so
+   direct RPC calls bypass the IP limit on `POST /api/order/recovery`. The local
+   migration revokes `PUBLIC`, `anon`, and `authenticated`, grants only
+   `service_role`, and asserts those effective privileges. Treat this as an
+   active production exposure until the route is deployed, the recovery flow and
+   rollback/backup readiness are verified, and the owner explicitly authorizes
+   applying this privilege change. Do not apply it with `db push` if unrelated
+   migrations are pending.
+
+### Production snapshot (read-only, 2026-10-13)
+
+- The latest remote migration is `20261009190000`; the local
+  `20261011120000_restrict_order_email_recovery.sql` is pending and was not
+  applied. The remote privilege check confirms the client-role exposure above.
+- `supabase backups list` returned no backups (`backups: []`,
+  `physical_backup_data: {}`) and `pitr_enabled: false`. No restorable backup
+  or restore test is confirmed. Do not apply the pending production migration
+  until backup/restore readiness is established, the deployed recovery flow is
+  validated, the pending migration order is reviewed, and explicit approval is
+  given.
+- The Vercel CLI account did not expose the expected project; production
+  environment variables and deployment state therefore remain unverified.
+  DNS currently resolves `www.atemi.com` to Squarespace, not Vercel.
+- A second check identified the CLI user as `elvisdjogbenou-collab` and its sole
+  team as `ATEMI` (`atemi`, Hobby); that team's Vercel project and domain lists
+  are empty. The repository is not linked to Vercel. No project was created or
+  linked.
+- An additional read-only CLI query using `--scope elvisdjogbenou-collab` was
+  rejected because Vercel does not accept the personal account as a scope.
+  Therefore, the empty project/domain result applies to the visible `atemi`
+  team only and does not establish that no project exists in another account.
+- `npm audit --omit=dev --offline` completed with `found 0 vulnerabilities`
+  using the current lockfile/cache. This is not a registry refresh; repeat the
+  production and development audits online when network access is available.
+- Online recheck: `npm audit --omit=dev` reports zero production
+  vulnerabilities; the full audit reports 42 development vulnerabilities
+  (35 high, 7 moderate, 0 critical). Non-forced `npm audit fix --dry-run`
+  proposes no changes. The current recommendations require major upgrades to
+  Tailwind CSS 4.3.3 and Jest 30.5.2. Reported vulnerable packages include
+  `braces@3.0.3`, `postcss-selector-parser@6.1.4`, and `sprintf-js@1.0.3`.
+  `handlebars@4.7.10` is not flagged by the current audit. Focused local
+  security/payment tests pass (4 suites, 36 tests), and typecheck passes.
+- A read-only production SQL check reconfirmed that `anon` and
+  `authenticated` can still execute `get_order_by_email`, while `create_order`
+  is service-role-only. It also confirmed that
+  `has_function_privilege('public', ...)` executes successfully and returns
+  `false` after the existing revocation; an earlier review claim that this
+  check would error was withdrawn. No database changes were made.
+- The still-executable `SECURITY DEFINER` recovery RPC returns the tracking
+  token and customer/order fields; direct client access bypasses the route's
+  rate limit. This is the confirmed high-severity production security blocker.
+  A fresh backup inventory reports `walg_enabled: true`, `pitr_enabled: false`,
+  and no listed logical or physical backups. A fresh
+  `supabase migration list --linked` attempt failed because PostgreSQL rejected
+  authentication for the CLI temporary login role; the last successful
+  migration snapshot remains `20261009190000` remote with
+  `20261011120000_restrict_order_email_recovery.sql` pending. No migration or
+  privilege change was applied.
+- Full local verification rerun: typecheck passed; Jest passed all 24 suites
+  and 335 tests; lint passed with no ESLint warnings/errors (Next.js only
+  reports the future deprecation of `next lint`); the production build passed
+  and generated 70 pages/routes; `git diff --check` passed.
+- Read-only RPC ACLs still show `anon` and `authenticated` can execute
+  `get_order_by_email`; `create_order` and `confirm_deposit_payment` are
+  service-role-only. `get_order_tracking` and `get_order_receipt` remain
+  client-callable with the bearer tracking token. The proposed revocation
+  preserves these token-based paths and the recovery API's service-role path.
+- DNS records show Proton Mail MX, SPF, verification TXT and three DKIM CNAMEs.
+  Keep them intact. Vercel's current documentation requires using the exact
+  apex A and `www` CNAME values displayed by the project's domain card (the
+  apex default is often `76.76.21.21`, but may be project-specific). No DNS
+  record, nameserver or domain setting was changed.
 
 ### 3. Upstash Redis
 
@@ -177,8 +274,6 @@ WHATSAPP_API_URL=https://api.twilio.com/...
 WHATSAPP_API_TOKEN=xxx
 ```
 
----
-
 ## Security Checklist
 
 - [ ] Production uses a patched dependency tree: `npm audit` and
@@ -195,8 +290,17 @@ WHATSAPP_API_TOKEN=xxx
 - [ ] `NEXT_PUBLIC_` prefix only on non-sensitive variables
 - [ ] Rate limiting is active on financial endpoints
 - [ ] Idempotency is active on payment confirmation
-
----
+- [ ] `anon` and `authenticated` cannot execute `public.create_order`; server-side
+      guest checkout succeeds through the service-role API
+- [ ] `anon` cannot execute `get_order_by_email` directly (apply
+      `20261011120000_restrict_order_email_recovery.sql` after validating
+      `/api/order/recovery` in production). Read-only check on 2026-10-13 found
+      this is currently false for both `anon` and `authenticated`; the local
+      migration now revokes both client roles, but remains unapplied.
+- [ ] KKiaPay `/api/payment/kkiapay/verify` checks amount/currency before
+      persisting `provider_transaction_id`
+- [ ] CinetPay webhook transitions are derived from the `payment/check` API only;
+      refund transitions are refused without a provider-verified API result
 
 ## Before Going Live
 
@@ -217,9 +321,9 @@ npm audit --omit=dev
 2. **Verify webhook** with provider's test mode
 3. **Check receipt** only appears after payment confirmation
 4. **Check notifications** only sent after payment confirmation
-5. **Test payment failure** — order should not become `paid`
-6. **Test duplicate webhook** — should be idempotent
-7. **Test rate limiting** — excessive requests should be blocked
+5. **Test payment failure**: order should not become `paid`
+6. **Test duplicate webhook**: should be idempotent
+7. **Test rate limiting**: excessive requests should be blocked
 
 ### Database Verification
 
@@ -239,8 +343,6 @@ SELECT * FROM pg_proc_roles
 WHERE proname = 'confirm_deposit_payment';
 ```
 
----
-
 ## Switching from Mock to Production
 
 1. Set `PAYMENT_PROVIDER=kkiapay` (or `cinetpay` / `fedapay`)
@@ -252,9 +354,7 @@ WHERE proname = 'confirm_deposit_payment';
 5. Test with provider's sandbox/test mode first
 6. Switch to live keys when ready
 
-**Important:** The `create_order` SQL function previously hardcoded `provider: 'mock'`. Since migration `20260911120000_payment_provider_and_sync.sql`, it accepts a `p_provider` parameter and the `/api/orders` route passes the configured provider — the payments table now stores the real provider name automatically.
-
----
+Important: The `create_order` SQL function previously hardcoded `provider: 'mock'`. Since migration `20260911120000_payment_provider_and_sync.sql`, it accepts a `p_provider` parameter and the `/api/orders` route passes the configured provider; the payments table now stores the real provider name automatically.
 
 ## Troubleshooting
 
@@ -275,8 +375,6 @@ WHERE proname = 'confirm_deposit_payment';
 ### Receipt not showing
 - Payment status is not `paid`
 - Check `payments` table for status
-
----
 
 ## Provider-Specific Notes
 

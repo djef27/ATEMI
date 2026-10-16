@@ -29,7 +29,7 @@ export default function SortSelect() {
         defaultValue={currentSort}
         onChange={(e) => handleChange(e.target.value)}
         disabled={isPending}
-        className="px-3 py-2 rounded-lg border border-primary-200 bg-white text-sm text-[#1A1919] focus:outline-none focus:ring-2 focus:ring-primary-300 disabled:opacity-50"
+        className="px-3 py-2 rounded-lg border border-primary-200 bg-white text-sm text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:opacity-50"
       >
         <option value="new">Nouveautés</option>
         <option value="price_asc">Prix croissant</option>

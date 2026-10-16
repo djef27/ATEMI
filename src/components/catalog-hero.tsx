@@ -18,8 +18,8 @@ export default function CatalogHero() {
             <span className="block italic text-[#a45d3d]">Atémi.</span>
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-6 text-[#62584f] sm:text-base sm:leading-7">
-            Des pièces choisies par les vendeurs du Bénin. Mode, beauté,
-            accessoires et trouvailles pour le quotidien.
+            Mode, beauté, accessoires et trouvailles sélectionnés par les vendeurs Atémi.
+            Notre premier marché est le Bénin ; les zones desservies sont indiquées au checkout.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
             <Link
@@ -31,7 +31,7 @@ export default function CatalogHero() {
             </Link>
             <span className="inline-flex items-center gap-2 text-xs font-medium text-[#76553e]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#a45d3d]" />
-              Acompte en ligne, solde à la livraison
+              Options de paiement précisées au checkout
             </span>
           </div>
         </div>

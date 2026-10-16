@@ -1,4 +1,4 @@
-# E-Commerce Boutique - Benin
+# E-commerce boutique Bénin
 
 Plateforme e-commerce multi-vendeurs pour le Bénin. Next.js 14 + Supabase + TypeScript + Tailwind CSS.
 
@@ -28,7 +28,7 @@ cp .env.example .env.local
 
 | Variable | Description | Côté |
 |----------|-------------|------|
-| `NEXT_PUBLIC_APP_URL` | URL publique de l'app (ex: https://atemi.bj) — requis pour les webhooks | Public |
+| `NEXT_PUBLIC_APP_URL` | URL publique de l'app (ex: https://atemi.bj), requis pour les webhooks | Public |
 | `NEXT_PUBLIC_APP_NAME` | Nom de l'app | Public |
 | `NEXT_PUBLIC_ADMIN_WHATSAPP` | Numéro WhatsApp admin | Public |
 | `WHATSAPP_API_TOKEN` | Token API WhatsApp | Serveur |
@@ -102,7 +102,7 @@ Pour KKiaPay, renseigner `PAYMENT_PROVIDER=kkiapay`, les trois clés `KKIAPAY_*`
 ## Architecture
 
 - **Frontend** : Next.js 14 (App Router), React 18, Tailwind CSS
-- **Backend** : Supabase (PostgreSQL, Auth, RLS)
+- **Backend** : Supabase (PostgreSQL, Auth, RLS (Row Level Security))
 - **State** : Zustand (panier persisté en localStorage)
 - **Types** : TypeScript strict
 

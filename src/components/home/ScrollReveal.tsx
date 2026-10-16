@@ -14,7 +14,7 @@ export function ScrollReveal({ children, delay = 0 }: ScrollRevealProps) {
   return (
     <div
       ref={ref}
-      className={`transition-all duration-900 ease-out ${
+      className={`transition-[opacity,transform] duration-900 ease-out motion-reduce:transition-none ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
       style={{ transitionDelay: `${delay}ms` }}

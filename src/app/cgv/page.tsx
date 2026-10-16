@@ -42,22 +42,24 @@ export default function CGVPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-serif font-semibold text-[#1A1919]">Article 4 — Paiement en deux fois</h2>
+            <h2 className="text-xl font-serif font-semibold text-[#1A1919]">Article 4 — Modalités de paiement</h2>
             <p>
-              Atémi propose un système de paiement en deux fois :
+              Selon le marché, le vendeur et les options affichées au checkout, le paiement peut comprendre :
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong>Acompte</strong> : Un pourcentage du prix total (défini par le vendeur) est payé
-                lors de la commande. Cet acompte valide la commande.
+                lors de la commande lorsque cette option est proposée. La commande est prise en compte
+                après confirmation du paiement demandé.
               </li>
               <li>
-                <strong>Solde</strong> : Le montant restant est payé au moment de la livraison, directement
-                au livreur ou au vendeur.
+                <strong>Solde</strong> : Le montant restant et son échéance sont précisés avant validation
+                de la commande ; ils dépendent des options affichées au checkout.
               </li>
             </ul>
             <p>
-              Les modes de paiement acceptés sont : Mobile Money (Moov, MTN), virement bancaire, et espèces.
+              Les modes de paiement et de règlement du solde proposés dépendent du marché et de la commande.
+              Seules les options affichées au checkout avant validation s&apos;appliquent.
             </p>
           </section>
 
@@ -121,7 +123,7 @@ export default function CGVPage() {
           </section>
 
           <p className="text-sm text-gray-500 pt-4 border-t border-gray-200">
-            Dernière mise à jour : 3 septembre 2026
+            Dernière mise à jour : 9 octobre 2026
           </p>
         </div>
       </div>

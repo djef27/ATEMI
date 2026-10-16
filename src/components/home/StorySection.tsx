@@ -30,20 +30,20 @@ export default async function StorySection() {
             <div>
               <p className="tagline text-primary-500 mb-3">Notre histoire</p>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#1A1919] mb-6 leading-tight">
-                La mode béninoise,
+                Une marketplace africaine,
                 <br />
-                à portée de main
+                construite marché par marché
               </h2>
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
-                  Atémi est née d&apos;une idée simple&nbsp;: rendre la mode de qualité accessible
-                  à toutes et à tous au Bénin. Nous connectons les meilleurs vendeurs
-                  locales avec une clientèle qui veut du beau, sans compromis.
+                  Atémi met en lumière les vendeurs, les créateurs et les communautés d&apos;Afrique.
+                  Notre ambition est de faciliter la découverte et l&apos;achat de produits africains
+                  grâce à une expérience en ligne simple et fiable.
                 </p>
                 <p>
-                  Notre système de paiement en deux fois — acompte à la commande,
-                  solde à la livraison — vous permet de commander en toute confiance,
-                  sans stress.
+                  Nous commençons au Bénin et ouvrirons les marchés progressivement. Les moyens de
+                  paiement et les zones de livraison proposés sont ceux effectivement disponibles
+                  pour le pays sélectionné.
                 </p>
               </div>
               <div className="mt-8 flex items-center gap-6">
@@ -59,7 +59,7 @@ export default async function StorySection() {
                 <div className="w-px h-10 bg-primary-200" />
                 <div className="text-center">
                   <p className="font-serif text-2xl font-bold text-[#1A1919]">100%</p>
-                  <p className="text-xs text-gray-500">Béninois</p>
+                  <p className="text-xs text-gray-500">Vision panafricaine</p>
                 </div>
               </div>
             </div>
