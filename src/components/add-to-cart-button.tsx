@@ -5,7 +5,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useToast } from '@/components/toast-provider';
 import { formatPrice } from '@/lib/utils';
 import { ShoppingBag, ShoppingCart, Minus, Plus, Check } from 'lucide-react';
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 interface AddToCartButtonProps {
   product: {
@@ -31,12 +31,18 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
   const [added, setAdded] = useState(false);
   const addItem = useCart((state) => state.addItem);
   const { showToast } = useToast();
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+  }, []);
 
   const handleAdd = () => {
     addItem({ ...product, quantity });
     setAdded(true);
     showToast(`${product.name} ajouté au panier`, 'success', <ShoppingCart className="w-5 h-5" />);
-    setTimeout(() => setAdded(false), 2000);
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    addedTimeoutRef.current = setTimeout(() => setAdded(false), 2000);
   };
 
   return (

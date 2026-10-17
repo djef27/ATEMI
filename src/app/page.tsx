@@ -9,7 +9,8 @@ import HowItWorks from '@/components/home/HowItWorks';
 import CtaSection from '@/components/home/CtaSection';
 import { getNewProducts, getBestSellers, type HomeProduct } from '@/lib/supabase/queries';
 import type { Metadata } from 'next';
-import { connection } from 'next/server';
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'Atémi — La marketplace des talents africains',
@@ -29,8 +30,6 @@ async function safeGetProducts(
 }
 
 export default async function Home() {
-  await connection();
-
   const [newProducts, bestSellers] = await Promise.all([
     safeGetProducts(getNewProducts, 8),
     safeGetProducts(getBestSellers, 8),

@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/sup
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getAppUrl } from '@/lib/app-url';
+import { getClientIp } from '@/lib/request';
 
 // ---------------------------------------------------------------------------
 // Centralized authorization helpers for vendor & admin API routes.
@@ -32,10 +33,22 @@ export interface AuthError {
   error: NextResponse;
 }
 
-const ALLOWED_ORIGINS = [
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  getAppUrl(),
-].filter(Boolean);
+// Resolved lazily (not at module load) so a misconfigured app URL can never
+// crash route imports; the failure is contained to an origin check.
+function getAllowedOrigins(): string[] {
+  const configured: string[] = [];
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (supabaseUrl) configured.push(supabaseUrl);
+  try {
+    configured.push(getAppUrl());
+  } catch (error) {
+    console.error(
+      '[AUTH] Unable to resolve app URL for origin checks:',
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+  return configured;
+}
 
 export function isAllowedOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
@@ -46,7 +59,7 @@ export function isAllowedOrigin(request: Request): boolean {
   const matchesAllowedOrigin = (value: string) => {
     try {
       const candidate = new URL(value);
-      return ALLOWED_ORIGINS.some((allowed) => {
+      return getAllowedOrigins().some((allowed) => {
         if (!allowed) return false;
         const expected = new URL(allowed);
         return candidate.protocol === expected.protocol
@@ -267,7 +280,9 @@ export function withRateLimit(
   handler: RateLimitedHandler
 ): (request: NextRequest) => Promise<NextResponse> {
   return async (request: NextRequest) => {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
+    // Trust only the platform-provided client IP (never a spoofable
+    // client-supplied x-forwarded-for) to keep rate-limit buckets honest.
+    const ip = getClientIp(request);
     const rl = await checkRateLimit(ip, config);
     if (!rl.allowed) {
       return NextResponse.json(

@@ -1,13 +1,13 @@
 import Image from 'next/image';
 import { ScrollReveal } from './ScrollReveal';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createPublicServerSupabaseClient } from '@/lib/supabase/server';
 
 export default async function StorySection() {
   let vendorCount = 50;
   let productCount = 500;
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
     const [vendorsResult, productsResult] = await Promise.all([
       supabase.from('vendors').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active').is('deleted_at', null),

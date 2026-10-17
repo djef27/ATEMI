@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createPublicServerSupabaseClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AddToCartButton from '@/components/add-to-cart-button';
@@ -10,6 +10,25 @@ import type { Metadata } from 'next';
 import { formatPrice } from '@/lib/utils';
 
 export const revalidate = 60;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    const supabase = await createPublicServerSupabaseClient();
+    const { data } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('status', 'active')
+      .is('deleted_at', null)
+      .not('slug', 'is', null)
+      .limit(500);
+    return (data || [])
+      .filter((p) => Boolean(p.slug))
+      .map((p) => ({ slug: String(p.slug) }));
+  } catch {
+    return [];
+  }
+}
 
 const CATEGORY_FALLBACKS: Record<string, string> = {
   'mode': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&h=800&fit=crop&q=80',
@@ -33,7 +52,7 @@ interface ProductPageProps {
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   try {
     const { slug } = await params;
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
     const { data: product } = await supabase
       .from('products')
       .select('name, description')
@@ -58,10 +77,10 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
   let product: Record<string, unknown> | null = null;
-  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  let supabase: Awaited<ReturnType<typeof createPublicServerSupabaseClient>> | null = null;
 
   try {
-    supabase = await createServerSupabaseClient();
+    supabase = await createPublicServerSupabaseClient();
 
     const { data } = await supabase
       .from('products')
@@ -295,7 +314,7 @@ async function SimilarProducts({
   let similarProducts: Array<{ id: string; name: string; slug: string; selling_price: number; deposit_rate: number; image_url: string | null }> = [];
 
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
     const { data: products } = await supabase
       .from('products')
       .select('id, name, slug, selling_price, deposit_rate')

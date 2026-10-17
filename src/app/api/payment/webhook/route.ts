@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     // Use event ID for proper per-event idempotency, not URL-based key
     // ------------------------------------------------------------------
 
-    idempotencyKey = eventId ? `pay:evt:${eventId}` : getIdempotencyKey(request, 'pay:webhook');
+    idempotencyKey = eventId ? `pay:evt:${eventId}` : getIdempotencyKey(request, 'pay:webhook', body);
     const requestHash = generateRequestHash(body);
 
     const idempotencyContext: IdempotencyContext = {

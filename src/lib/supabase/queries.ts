@@ -1,4 +1,4 @@
-import { createPublicServerSupabaseClient, createServerSupabaseClient } from './server';
+import { createPublicServerSupabaseClient } from './server';
 
 // ============================================
 // Home page types
@@ -144,7 +144,7 @@ export async function getNewProducts(limit = 8): Promise<HomeProduct[]> {
 
 export async function getBestSellers(limit = 8): Promise<HomeProduct[]> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createPublicServerSupabaseClient();
 
     // Fetch order_items + products in parallel
     const [orderItemsResult, productsResult] = await Promise.all([

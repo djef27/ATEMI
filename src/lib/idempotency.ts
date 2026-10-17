@@ -89,13 +89,19 @@ export async function storeIdempotencyResponse(
 
 /**
  * Middleware helper to extract or generate idempotency key from request.
- * Priority: Idempotency-Key header > generated from user+path+body
+ * Priority: Idempotency-Key header > generated from method + URL (+ body hash).
+ *
+ * The fallback must include a body hash: an URL-only key would collapse two
+ * genuinely different POSTs to the same endpoint into one bucket, which the
+ * idempotency RPC then rejects as a payload conflict (409) even though no
+ * replay occurred. Including the hash keeps distinct payloads distinct while
+ * still making an identical retry a replay.
  */
-export function getIdempotencyKey(request: Request, fallbackPrefix: string): string {
+export function getIdempotencyKey(request: Request, fallbackPrefix: string, body?: unknown): string {
   const headerKey = request.headers.get('idempotency-key');
   if (headerKey) {
     return headerKey;
   }
-  // Fallback: generate from URL + body hash (less reliable, for backwards compat)
-  return `${fallbackPrefix}:${request.url}`;
+  const base = `${fallbackPrefix}:${request.method}:${request.url}`;
+  return body === undefined ? base : `${base}:${generateRequestHash(body)}`;
 }

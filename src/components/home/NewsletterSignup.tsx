@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 
@@ -9,6 +9,7 @@ export default function NewsletterSignup() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const emailId = useId();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,17 +57,19 @@ export default function NewsletterSignup() {
             </p>
 
             {submitted ? (
-              <div className="flex items-center justify-center gap-2 text-primary-400">
-                <CheckCircle className="w-5 h-5" />
+              <div role="status" className="flex items-center justify-center gap-2 text-primary-400">
+                <CheckCircle className="w-5 h-5" aria-hidden="true" />
                 <span className="font-medium">Merci ! Vous serez informé(e) de nos nouveautés.</span>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                <label htmlFor={emailId} className="sr-only">Adresse email</label>
                 {error && (
-                  <p className="text-sm text-rose-400 w-full">{error}</p>
+                  <p role="alert" className="text-sm text-rose-400 w-full">{error}</p>
                 )}
                 <div className="flex flex-col sm:flex-row gap-3">
                 <input
+                  id={emailId}
                   type="email"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}

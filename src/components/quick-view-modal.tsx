@@ -23,8 +23,13 @@ export default function QuickViewModal({ product, trigger }: QuickViewModalProps
   const [added, setAdded] = useState(false);
   const addItem = useCart((state) => state.addItem);
   const { showToast } = useToast();
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => () => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +69,8 @@ export default function QuickViewModal({ product, trigger }: QuickViewModalProps
     });
     setAdded(true);
     showToast(`${product.name} ajouté au panier`, 'success', <ShoppingBag className="w-5 h-5" aria-hidden="true" />);
-    setTimeout(() => setAdded(false), 2000);
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    addedTimeoutRef.current = setTimeout(() => setAdded(false), 2000);
   };
 
   return (

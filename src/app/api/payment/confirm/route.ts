@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient, createServerSupabaseClient } from '@/lib/supabase/server';
 import { paymentConfirmSchema } from '@/lib/validations';
-import { checkRateLimit, RATE_LIMIT_CONFIGS, FINANCIAL_RATE_LIMIT_PREFIXES } from '@/lib/rate-limit';
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { checkIdempotencyKey, storeIdempotencyResponse, generateRequestHash, getIdempotencyKey, IdempotencyContext } from '@/lib/idempotency';
 import { validateServiceRoleKey } from '@/lib/payment/config';
 import { dispatchPaymentActions } from '@/lib/payment/dispatch';
-import { getAppUrl } from '@/lib/app-url';
+import { isAllowedOrigin } from '@/lib/auth-helpers';
 
 /**
  * POST /api/payment/confirm
@@ -25,43 +25,6 @@ import { getAppUrl } from '@/lib/app-url';
  *   9. Idempotency response storage
  *   10. Error sanitization (no SQL leaks)
  */
-
-const ALLOWED_ORIGINS = [
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  getAppUrl(),
-].filter(Boolean);
-
-function isAllowedOrigin(request: NextRequest): boolean {
-  const origin = request.headers.get('origin');
-  const referer = request.headers.get('referer');
-
-  // In production, require at least one origin/referer header
-  if (process.env.NODE_ENV === 'production' && !origin && !referer) return false;
-
-  if (!origin && !referer) return true;
-
-  const matchesAllowedOrigin = (value: string) => {
-    try {
-      const candidate = new URL(value);
-      return ALLOWED_ORIGINS.some((allowed) => {
-        if (!allowed) return false;
-        const expected = new URL(allowed);
-        return candidate.protocol === expected.protocol
-          && candidate.hostname === expected.hostname
-          && candidate.port === expected.port;
-      });
-    } catch {
-      return false;
-    }
-  };
-
-  if (origin && matchesAllowedOrigin(origin)) return true;
-  if (referer && matchesAllowedOrigin(referer)) return true;
-
-  if (process.env.NODE_ENV !== 'production') return true;
-
-  return false;
-}
 
 export async function POST(request: NextRequest) {
   let idempotencyKey: string | null = null;
@@ -173,7 +136,7 @@ export async function POST(request: NextRequest) {
     // 6b. Idempotency check (persistent DB)
     // ------------------------------------------------------------------
 
-    idempotencyKey = getIdempotencyKey(request, 'pay:confirm');
+    idempotencyKey = getIdempotencyKey(request, 'pay:confirm', body);
     requestHash = generateRequestHash(body);
 
     const idempotencyContext: IdempotencyContext = {

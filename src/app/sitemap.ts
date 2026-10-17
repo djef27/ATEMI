@@ -1,13 +1,13 @@
 import type { MetadataRoute } from 'next';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createPublicServerSupabaseClient } from '@/lib/supabase/server';
 
 const BASE_URL = 'https://atemi.bj';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>> | null = null;
+  let supabase: Awaited<ReturnType<typeof createPublicServerSupabaseClient>> | null = null;
 
   try {
-    supabase = await createServerSupabaseClient();
+    supabase = await createPublicServerSupabaseClient();
   } catch {
     return [
       { url: BASE_URL, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
