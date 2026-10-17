@@ -18,6 +18,9 @@ des identifiants de projet et des URL publiques de déploiement.
 | Vercel : accès, projet, déploiements | **CORRIGÉ — OK** | CLI `--non-interactive`; projet `atemi-preview` |
 | Blocage build Vercel (cause racine) | **CORRIGÉ** | `[STATIC_BUILD_EMPTY_OUT_DIR]` → fix framework |
 | Preview déployée et **Ready** | **OK** | `https://atemi-preview-o04deelp6-atemi.vercel.app` |
+| **Production déployée et READY** | **OK** | `https://atemi-preview.vercel.app` |
+| Pages servies en production | **OK** | `/`, `/products`, `/suivi`, `/cart`, `/sitemap.xml` → 200 |
+| Parcours transactionnel en production | **BLOQUÉ (fail-closed)** | POST `/api/orders`, `/api/payment/initiate`, `/api/order/recovery` → **429** (Upstash absent) |
 | Sécurité RPC `get_order_by_email` (anon) | **CORRIGÉ — DENIED** | probe → `401 42501` |
 | `create_order` / `confirm_deposit_payment` (anon) | **OK — DENIED** | probe → `401 42501` |
 | Tests unitaires | **OK** | 27 suites / 368 tests |
@@ -27,7 +30,7 @@ des identifiants de projet et des URL publiques de déploiement.
 | Domaine `atemi.com` | **NON FAIT** | apex → Squarespace; 0 domaine sous Vercel |
 | `BREVO_API_KEY` / Upstash | **ABSENTS** | `vercel env ls` (noms) |
 | Migration P2 (RLS vendeur) | **NON APPLIQUÉE** | registre distant = `20261009190000` |
-| Go-live production | **BLOQUÉ** | voir §7 |
+| Go-live production | **BLOQUÉ** | `UPSTASH_*` et `BREVO_API_KEY` absents ; voir §6/§7 |
 
 **Décision : PAS PRÊT POUR LE GO-LIVE.** Le blocage technique majeur (build Vercel)
 et le blocage de sécurité majeur (RPC) sont corrigés et vérifiés. Restent des
@@ -179,23 +182,71 @@ lint complet s'exécute aussi pendant `next build`.
 
 ---
 
+## 6bis. Déploiement Production — vérifications (2026-10-17)
+
+- Déploiement : `vercel deploy --prod` → `readyState: READY`, `target: production`,
+  `dpl_9aYoXVd5JrGfq6Q9bGVBiNpBSuyM`, alias **`https://atemi-preview.vercel.app`**.
+  Le correctif `framework` a donc bien débloqué la production (auparavant 404).
+- Réponses HTTP anonymes (curl, sans auth) :
+
+  | Route | Code |
+  |---|---|
+  | `/` | 200 |
+  | `/products` | 200 |
+  | `/suivi` | 200 |
+  | `/cart` | 200 |
+  | `/sitemap.xml` | 200 |
+  | `/images/hero-catalogue.webp` | 200 |
+  | `/mon-compte`, `/admin`, `/vendor` | 307 (redirection, protégé — attendu) |
+  | `/panier` | 404 (route inexistante : le panier est `/cart`) |
+  | `GET /api/payment/initiate` | 405 (méthode non autorisée — attendu) |
+
+- Rendu vérifié : titres `Atémi — La marketplace des talents africains` et
+  `Catalogue - Atémi | Atémi` ; le HTML de `/products` contient bien
+  `/images/hero-catalogue.webp` et le texte accentué « belles découvertes ».
+- **BLOCAGE CRITIQUE — parcours transactionnel :**
+  `POST /api/orders` → **429**, `POST /api/payment/initiate` → **429**,
+  `POST /api/order/recovery` → **429**.
+  Cause : `src/lib/rate-limit.ts` traite tout préfixe `rl:pay:` / `rl:order:`
+  comme *endpoint financier* et, **en production, refuse tout si
+  `UPSTASH_REDIS_REST_URL`/`_TOKEN` ne sont pas définis** (fail-closed,
+  `retryAfterMs: 60000`). Upstash étant absent de Vercel, **aucune commande,
+  aucun paiement, aucune récupération invité ne peut aboutir en production.**
+  C'est un comportement volontairement sûr (protection anti-brute-force), mais il
+  rend le site **non fonctionnel** côté transaction tant que Upstash n'est pas
+  configuré.
+- Note de protection : le déploiement expose `deploymentProtection:
+  ["vercel_authentication"]`, mais l'accès anonyme racine répond **200**
+  (la protection ne s'applique pas à l'alias de production dans ce cas).
+- Note SEO mineure : le `<title>` de `/products` est `Catalogue - Atémi | Atémi`
+  (suffixe « Atémi » dupliqué par le template de layout).
+
+---
+
 ## 7. Bloqueurs du go-live (intervention humaine requise)
 
-1. **Clés applicatives absentes** : définir `BREVO_API_KEY` (+ `EMAIL_FROM_*`) et
-   `UPSTASH_REDIS_REST_URL`/`_TOKEN` **dans le dashboard Vercel**. Ne jamais les
-   coller dans le chat ou dans le dépôt.
-2. **Sauvegarde Supabase** : activer/restaurer une sauvegarde réelle
+1. **`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (bloquant n°1)** : sans
+   eux, **toutes** les routes transactionnelles renvoient 429 en production
+   (fail-closed) → le site ne peut pas prendre de commande ni de paiement.
+   À définir **dans le dashboard Vercel** (Production + Preview).
+2. **`BREVO_API_KEY` (+ `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`)** : sans elle,
+   l'envoi d'e-mails est fail-closed (`72cc987`) → aucune confirmation de commande.
+   À définir dans le dashboard Vercel. Ne jamais coller ces secrets dans le chat
+   ni dans un fichier du dépôt.
+3. **Sauvegarde Supabase** : activer/restaurer une sauvegarde réelle
    (`backups: []`, `pitr_enabled: false`) avant toute migration de production.
-3. **Migrations pendantes** : réconcilier le registre distant (`20261011120000`
+4. **Migrations pendantes** : réconcilier le registre distant (`20261011120000`
    appliquée hors registre) puis appliquer `20261013100000` — **autorisation
    explicite + sauvegarde préalable obligatoires**.
-4. **Domaine** : attacher `atemi.com`/`www` au projet Vercel puis basculer le DNS,
+5. **Domaine** : attacher `atemi.com`/`www` au projet Vercel puis basculer le DNS,
    en préservant délégation NS et MX/SPF/TXT/DKIM Proton.
-5. **Clés de paiement Live** : `KKIAPAY_SANDBOX` est présent ; passer en production
+6. **Clés de paiement Live** : `KKIAPAY_SANDBOX` est présent ; passer en production
    uniquement **après** validation E2E sandbox (`E2E_SANDBOX_TEST_PROCEDURE.md`).
-6. **Branch/commit** : le correctif `vercel.json` et le hero ne sont pas commités/pushés.
-7. **Nettoyage** : retirer les artefacts temporaires (`tmp_*`, `ns1_network*.txt`,
-   `npm-audit-*.json`, `.playwright-mcp/`) avant commit.
+7. **Branche Git** : commits poussés sur `feat/catalogue-background` (`260982e`),
+   incluant `278cb39` et `72cc987`. La branche `master` locale reste en avance de 2
+   sur `origin/master` — ouvrir une PR pour fusionner si souhaité.
+8. **Nettoyage** : retirer les artefacts temporaires (`tmp_*`, `ns1_network*.txt`,
+   `npm-audit-*.json`, `.playwright-mcp/`) — non commités.
 
 ---
 
@@ -236,11 +287,13 @@ Production non protégé.
 
 ## 10. Ce qui n'a pas été fait (et pourquoi)
 
-- **Déploiement Production promu** : non effectué en l'état. Le build est validé,
-  mais `BREVO_API_KEY` et Upstash sont absents → un site « à jour » mais ne
-  traitant ni e-mails ni rate-limit. Le domaine n'étant pas attaché, un déploiement
-  prod resterait isolé sur `*.vercel.app`. **À valider par décision explicite.**
+- **Déploiement Production promu** : **effectué sur décision explicite** de
+  l'utilisateur → `https://atemi-preview.vercel.app` (READY). Le domaine n'étant
+  pas attaché, il est isolé sur `*.vercel.app`. Le site sert les pages mais le
+  parcours transactionnel est bloqué par le fail-closed Upstash (voir §6bis).
 - **`atemi.com` non pointé** : action registrars/DNS à mener manuellement.
-- **Aucune migration distante** appliquée (décision + sauvegarde requises).
-- **Aucun paiement E2E** exécuté, aucun paiement réel activé.
-- **Aucun push Git** effectué.
+- **Aucune migration distante** appliquée (décision « ne rien appliquer,
+  documenter » + sauvegarde requise).
+- **Aucun paiement E2E** exécuté, aucun paiement réel activé (paiements en
+  production restés sur clés **sandbox**).
+- **Push Git effectué** : `feat/catalogue-background` → `origin` (`260982e`).
