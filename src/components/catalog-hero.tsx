@@ -4,17 +4,16 @@ import { ArrowDown, ArrowUpRight, Sparkles } from 'lucide-react';
 
 export default function CatalogHero() {
   return (
-    <section className="relative overflow-hidden bg-[#f4eee6]">
+    <section className="relative overflow-hidden bg-[#fbf8f3]">
       <div className="absolute inset-0">
         <Image
-          src="/hero-catalogue.webp"
+          src="/images/hero-catalogue.webp"
           alt=""
           fill
           priority
           sizes="100vw"
+          quality={70}
           className="object-cover object-center"
-          placeholder="blur"
-          blurDataURL="data:image/webp;base64,UklGRioAAABXRUJQVlA4IB4AAABwAQCdASoIAAgAAUAmJZwCdAFAAAD++/fT72lXEAA="
         />
       </div>
       <div
@@ -22,9 +21,10 @@ export default function CatalogHero() {
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(to right, rgba(244,238,230,0.98) 0%, rgba(244,238,230,0.92) 40%, rgba(244,238,230,0.72) 70%, rgba(244,238,230,0.40) 90%, rgba(244,238,230,0.15) 100%)',
+            'linear-gradient(to right, rgba(251,248,243,1) 0%, rgba(251,248,243,0.99) 40%, rgba(251,248,243,0.82) 65%, rgba(251,248,243,0.45) 85%, rgba(251,248,243,0.1) 100%)',
         }}
       />
+      <div aria-hidden="true" className="absolute inset-0 bg-[#fbf8f3]/30 md:hidden" />
       <div aria-hidden="true" className="absolute -right-24 -top-36 h-[24rem] w-[24rem] rounded-full border border-[#a9876a]/20 sm:-right-12 sm:h-[34rem] sm:w-[34rem]" />
       <div aria-hidden="true" className="absolute right-16 top-12 h-32 w-32 rounded-full bg-[radial-gradient(circle,#c98f6a_0_1px,transparent_1.5px)] bg-[length:14px_14px] opacity-30 sm:right-36 sm:top-16 sm:h-48 sm:w-48" />
 
@@ -32,15 +32,15 @@ export default function CatalogHero() {
         <div className="relative z-10 max-w-2xl">
           <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9b6548] sm:text-xs">
             <Sparkles className="h-3.5 w-3.5" />
-            La boutique des belles dǸcouvertes
+            La boutique des belles découvertes
           </p>
           <h1 className="font-serif text-4xl font-medium leading-[1.02] tracking-[-0.035em] text-[#2d2118] sm:text-6xl">
             Le catalogue
-            <span className="block italic text-[#a45d3d]">AtǸmi.</span>
+            <span className="block italic text-[#a45d3d]">Atémi.</span>
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-6 text-[#62584f] sm:text-base sm:leading-7">
-            Mode, beautǸ, accessoires et trouvailles sǸlectionnǸs par les vendeurs AtǸmi.
-            Notre premier marchǸ est le BǸnin ; les zones desservies sont indiquǸes au checkout.
+            Mode, beauté, accessoires et trouvailles sélectionnés par les vendeurs Atémi.
+            Notre premier marché est le Bénin ; les zones desservies sont indiquées au checkout.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
             <Link
@@ -52,7 +52,7 @@ export default function CatalogHero() {
             </Link>
             <span className="inline-flex items-center gap-2 text-xs font-medium text-[#76553e]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#a45d3d]" />
-              Options de paiement prǸcisǸes au checkout
+              Options de paiement précisées au checkout
             </span>
           </div>
         </div>
