@@ -21,6 +21,9 @@ des identifiants de projet et des URL publiques de déploiement.
 | **Production déployée et READY** | **OK** | `https://atemi-preview.vercel.app` |
 | Pages servies en production | **OK** | `/`, `/products`, `/suivi`, `/cart`, `/sitemap.xml` → 200 |
 | Parcours transactionnel en production | **BLOQUÉ (fail-closed)** | POST `/api/orders`, `/api/payment/initiate`, `/api/order/recovery` → **429** (Upstash absent) |
+| SEO — titres dupliqués | **CORRIGÉ + déployé** | `/products` → `Catalogue | Atémi`, `/contact` → `Contact | Atémi`… |
+| SEO — sitemap/robots/canonicals sur domaine mort | **CORRIGÉ + déployé** | plus aucune URL `atemi.bj` ; dérivent de `getAppUrl()` |
+| SEO — `NEXT_PUBLIC_APP_URL` canonique | **NON CORRIGÉ (bloqueur)** | sitemap/OG pointent sur l'URL du déploiement |
 | Sécurité RPC `get_order_by_email` (anon) | **CORRIGÉ — DENIED** | probe → `401 42501` |
 | `create_order` / `confirm_deposit_payment` (anon) | **OK — DENIED** | probe → `401 42501` |
 | Tests unitaires | **OK** | 27 suites / 368 tests |
@@ -223,6 +226,58 @@ lint complet s'exécute aussi pendant `next build`.
 
 ---
 
+## 6ter. SEO technique (Phase 7) — constat et correctifs
+
+### Constats
+
+1. **Domaine codé en dur et inexistant** : `atemi.bj` apparaissait **17 fois** dans
+   `src/` — dans `sitemap.ts` (`BASE_URL`), `robots.ts` (URL sitemap),
+   `breadcrumbs.tsx` (JSON-LD), les `alternates.canonical` des layouts `contact`,
+   `devenir-vendeur`, `comment-ca-marche`, et `ai-engine/text/product-truth.ts`.
+   Vérification DNS : **`atemi.bj` → NXDOMAIN (n'existe pas)** ; `atemi.com` résout
+   (Squarespace). La production servait donc un `robots.txt` et un `sitemap.xml`
+   pointant sur un domaine qui **ne résout pas**.
+2. **Titres dupliqués** : le root layout utilise le template `%s | Atémi`, et
+   plusieurs segments ajoutaient eux-mêmes « - Atémi » / « — Atémi » :
+   - `/products` → `Catalogue - Atémi | Atémi`
+   - `/products/[slug]` → `<Nom> - Atémi | Atémi`
+   - `/contact` → `Contact — Atémi | Atémi`
+   - `/devenir-vendeur` → `Devenir Vendeur — Atémi | Atémi`
+   - `/comment-ca-marche` → `Comment Ça Marche — Atémi | Atémi`
+   (`/cgv`, `/a-propos`, `/politique-de-confidentialite` n'avaient pas ce suffixe et
+   étaient corrects.)
+3. **`NEXT_PUBLIC_APP_URL` non renseignée pour la prod** : `metadataBase` et l'`og:image`
+   résolvent vers l'**URL du déploiement** (`atemi-preview-<hash>.vercel.app`), ce qui
+   prouve que `getAppUrl()` retombe sur `VERCEL_URL` — donc la variable configurée est
+   vide ou en loopback. Après le correctif, `sitemap.xml`/`robots.txt` pointent donc
+   sur l'URL de déploiement : correcte et joignable, mais **pas canonique**.
+
+### Correctifs appliqués (commit `bd1a9fa`, déployés et vérifiés)
+
+- Titres : suppression du suffixe marque dans `products/page.tsx`,
+  `products/[slug]/page.tsx`, et les layouts `contact`, `devenir-vendeur`,
+  `comment-ca-marche` → rendu `X | Atémi` (confirmé en production).
+- `sitemap.ts`, `robots.ts`, `product-truth.ts` : dérivent de `getAppUrl()`
+  (source unique).
+- `breadcrumbs.tsx` (JSON-LD) : utilise **uniquement** `NEXT_PUBLIC_APP_URL`
+  (inliné identiquement serveur/client) et retombe sur une URL relative si absente —
+  évite un **mismatch d'hydratation**, ce composant étant aussi importé par le client
+  `cart/page.tsx` (`'use client'`).
+- Vérifications : `tsc` 0, `eslint --max-warnings=0` 0 (9 fichiers),
+  `next build` 0, déploiement production OK.
+
+### Reste à traiter (décision métier requise)
+
+- **`atemi.bj` subsiste dans 10 emplacements** : e-mails (`contact@atemi.bj` ×4,
+  `noreply@atemi.bj` dans `email.ts`) et **texte légal des CGV** (4 mentions du site
+  « atemi.bj »). Le domaine n'existant pas, ces adresses sont inutilisables et le
+  texte des CGV cite un site inexistant. **À arbitrer : atemi.bj ou atemi.com ?**
+- Fixer `NEXT_PUBLIC_APP_URL` (= domaine canonique) dans Vercel pour que sitemap,
+  robots, canonicals, OG et les URLs de callback de paiement pointent sur le domaine
+  réel.
+
+---
+
 ## 7. Bloqueurs du go-live (intervention humaine requise)
 
 1. **`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (bloquant n°1)** : sans
@@ -238,8 +293,12 @@ lint complet s'exécute aussi pendant `next build`.
 4. **Migrations pendantes** : réconcilier le registre distant (`20261011120000`
    appliquée hors registre) puis appliquer `20261013100000` — **autorisation
    explicite + sauvegarde préalable obligatoires**.
-5. **Domaine** : attacher `atemi.com`/`www` au projet Vercel puis basculer le DNS,
-   en préservant délégation NS et MX/SPF/TXT/DKIM Proton.
+5. **Domaine (bloquant n°2)** : trancher entre **`atemi.bj`** (utilisé partout dans
+   le code, CGV et e-mails… mais **NXDOMAIN**) et **`atemi.com`** (résout, hébergé chez
+   Squarespace). Puis : renseigner `NEXT_PUBLIC_APP_URL` dans Vercel (domine sitemap,
+   robots, canonicals, OG et URLs de callback de paiement), attacher le domaine au
+   projet Vercel et basculer le DNS **en préservant la délégation NS et les
+   MX/SPF/TXT/DKIM Proton**. Mettre à jour les e-mails publics et les CGV en conséquence.
 6. **Clés de paiement Live** : `KKIAPAY_SANDBOX` est présent ; passer en production
    uniquement **après** validation E2E sandbox (`E2E_SANDBOX_TEST_PROCEDURE.md`).
 7. **Branche Git** : commits poussés sur `feat/catalogue-background` (`260982e`),
