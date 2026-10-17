@@ -10,7 +10,24 @@ interface BreadcrumbsProps {
   items: BreadcrumbItem[];
 }
 
+// Resolve the canonical origin from the public env var only. This value is
+// inlined identically in server and client bundles, so the JSON-LD output is
+// stable across SSR and hydration. Falls back to relative URLs when the public
+// URL is missing or points at localhost.
+function getJsonLdBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return '';
+    return url.origin;
+  } catch {
+    return '';
+  }
+}
+
 export default function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const baseUrl = getJsonLdBaseUrl();
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -18,7 +35,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
       '@type': 'ListItem',
       position: i + 1,
       name: item.label,
-      ...(item.href ? { item: `https://atemi.bj${item.href}` } : {}),
+      ...(item.href ? { item: `${baseUrl}${item.href}` } : {}),
     })),
   };
 

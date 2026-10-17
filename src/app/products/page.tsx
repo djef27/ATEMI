@@ -11,7 +11,7 @@ import type { Metadata } from 'next';
 import type { PublicProduct } from '@/types';
 
 export const metadata: Metadata = {
-  title: 'Catalogue - Atémi',
+  title: 'Catalogue',
   description: 'Découvrez notre sélection de produits',
 };
 

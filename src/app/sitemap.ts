@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { createPublicServerSupabaseClient } from '@/lib/supabase/server';
+import { getAppUrl } from '@/lib/app-url';
 
-const BASE_URL = 'https://atemi.bj';
+const BASE_URL = getAppUrl();
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let supabase: Awaited<ReturnType<typeof createPublicServerSupabaseClient>> | null = null;

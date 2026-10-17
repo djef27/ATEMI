@@ -8,6 +8,7 @@
 
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import type { ProductAnalysis } from './product-analyzer';
+import { getAppUrl } from '@/lib/app-url';
 
 // ============================================
 // Types
@@ -61,7 +62,7 @@ export async function createProductTruth(
     colors: analysis.colors,
     dimensions: null,
     verifiedFeatures: analysis.visibleFeatures,
-    productUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://atemi.bj'}/products/${productId}`,
+    productUrl: `${getAppUrl()}/products/${productId}`,
     sourceImages: images,
     allowedClaims: analysis.allowedClaims,
     forbiddenClaims: analysis.forbiddenClaims,

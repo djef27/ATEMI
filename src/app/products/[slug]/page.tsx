@@ -66,11 +66,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     }
 
     return {
-      title: `${product.name} - Atémi`,
+      title: product.name,
       description: product.description?.substring(0, 160) || `${product.name} - Atémi`,
     };
   } catch {
-    return { title: 'Produit - Atémi' };
+    return { title: 'Produit' };
   }
 }
 
