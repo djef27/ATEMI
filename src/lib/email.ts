@@ -28,11 +28,16 @@ export interface EmailResult {
 
 async function sendViaBrevo(options: EmailOptions): Promise<EmailResult> {
   const apiKey = process.env.BREVO_API_KEY;
+  const isProd = process.env.NODE_ENV === 'production';
   if (!apiKey) {
-    console.log('[EMAIL][BREVO] No API key — logging instead');
+    if (isProd) {
+      console.error('[EMAIL][BREVO] Missing BREVO_API_KEY in production');
+      return { success: false, error: 'Email not configured' };
+    }
+    console.log('[EMAIL][BREVO] No API key — logging instead (dev only)');
     console.log(`  To: ${options.to}`);
     console.log(`  Subject: ${options.subject}`);
-    return { success: true, messageId: 'dev-logged' };
+    return { success: false, error: 'Email not configured (dev-only log)' };
   }
 
   try {
