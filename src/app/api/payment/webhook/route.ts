@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { checkIdempotencyKey, storeIdempotencyResponse, generateRequestHash, getIdempotencyKey, IdempotencyContext } from '@/lib/idempotency';
 import { PROVIDER_EVENT_MAP, type PaymentProvider } from '@/lib/payment/types';
 import { getPaymentProvider } from '@/lib/payment/providers';
@@ -67,17 +68,8 @@ export async function POST(request: NextRequest) {
     const ip = getClientIp(request);
     const rl = await checkRateLimit(ip, RATE_LIMIT_CONFIGS.paymentWebhook);
 
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Rate limit exceeded' },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)),
-          },
-        }
-      );
-    }
+    const rateLimited = rateLimitResponse(rl);
+    if (rateLimited) return rateLimited;
 
     // ------------------------------------------------------------------
     // 2. Read raw body for signature verification

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { sendEmail, orderConfirmationEmail } from '@/lib/email';
 import { z } from 'zod';
 import { getPaymentConfig } from '@/lib/payment/config';
@@ -49,24 +50,12 @@ const createOrderSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Rate limiting
+    // 1. Rate limiting (fail-closed on financial endpoints: 429 for a spent
+    //    quota, 503 when Redis is unavailable — never a free pass).
     const ip = getClientIp(request);
     const rl = await checkRateLimit(ip, RATE_LIMIT_CONFIGS.orderCreate);
-
-    if (!rl.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Trop de requêtes. Réessayez dans ${Math.ceil(rl.retryAfterMs / 1000)}s`,
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)),
-          },
-        }
-      );
-    }
+    const rateLimited = rateLimitResponse(rl);
+    if (rateLimited) return rateLimited;
 
     // 2. Parse + validate body
     let body: unknown;

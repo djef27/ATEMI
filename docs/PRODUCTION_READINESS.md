@@ -1,10 +1,12 @@
 # Production Readiness — ATEMI
 
-Date : 2026-10-17.
-Dépôt : `C:\dev\ecommerce-boutique` — branche `feat/catalogue-background`, HEAD `ecc6275`.
+Date : 2026-10-17 (mise à jour tardive).
+Dépôt : `C:\dev\ecommerce-boutique` — branche `feat/catalogue-background`, HEAD **`3709954`**
+(poussé sur `origin` : `https://github.com/djef27/ATEMI.git` ; `origin/master` = `16111de`).
 Périmètre : audit, corrections et mise en production du projet existant.
 Aucun paiement réel, aucune donnée de production supprimée, aucun enregistrement DNS
-ni secret modifié pendant cette session. Aucun `git push` effectué.
+modifié. La seule variable Vercel ajoutée par la CLI a échoué (déjà existante) ;
+`UPSTASH_REDIS_REST_URL` est apparu côté dashboard (action humaine), **sans** son token.
 
 Ce rapport n'affiche **aucune valeur secrète** : uniquement des noms de variables,
 des identifiants de projet et des URL publiques de déploiement.
@@ -20,24 +22,84 @@ des identifiants de projet et des URL publiques de déploiement.
 | Preview déployée et **Ready** | **OK** | `https://atemi-preview-o04deelp6-atemi.vercel.app` |
 | **Production déployée et READY** | **OK** | `https://atemi-preview.vercel.app` |
 | Pages servies en production | **OK** | `/`, `/products`, `/suivi`, `/cart`, `/sitemap.xml` → 200 |
-| Parcours transactionnel en production | **BLOQUÉ (fail-closed)** | POST `/api/orders`, `/api/payment/initiate`, `/api/order/recovery` → **429** (Upstash absent) |
+| Parcours transactionnel en production | **BLOQUÉ (fail-closed, diagnostic corrigé)** | POST `/api/orders`, `/api/payment/initiate` → **503** (plus 429 trompeur) ; cause = `UPSTASH_REDIS_REST_TOKEN` **absent** (URL présente) |
 | SEO — titres dupliqués | **CORRIGÉ + déployé** | `/products` → `Catalogue | Atémi`, `/contact` → `Contact | Atémi`… |
 | SEO — sitemap/robots/canonicals sur domaine mort | **CORRIGÉ + déployé** | plus aucune URL `atemi.bj` ; dérivent de `getAppUrl()` |
 | SEO — `NEXT_PUBLIC_APP_URL` canonique | **NON CORRIGÉ (bloqueur)** | sitemap/OG pointent sur l'URL du déploiement |
 | Sécurité RPC `get_order_by_email` (anon) | **CORRIGÉ — DENIED** | probe → `401 42501` |
 | `create_order` / `confirm_deposit_payment` (anon) | **OK — DENIED** | probe → `401 42501` |
-| Tests unitaires | **OK** | 27 suites / 368 tests |
+| Sécurité `SECURITY DEFINER` (`SET search_path`) | **CORRIGÉ (local, non appliqué)** | dump distant : 16 fonctions sans `search_path` ; migration `20261017120000` commitée `3709954`, **non appliquée** (backup d'abord) |
+| Tests unitaires | **OK** | 28 suites / 392 tests (incl. 24 nouveaux sur le 429/503) |
 | Typecheck | **OK** | `tsc --noEmit` → 0 |
+| Lint (fichiers modifiés) | **OK** | `eslint --max-warnings=0` → clean |
 | Build local | **OK** | `next build` → 78 pages |
 | Sauvegardes Supabase | **BLOQUÉ** | `backups: []`, `pitr_enabled: false` |
 | Domaine `atemi.com` | **NON FAIT** | apex → Squarespace; 0 domaine sous Vercel |
-| `BREVO_API_KEY` / Upstash | **ABSENTS** | `vercel env ls` (noms) |
+| `BREVO_API_KEY` / `EMAIL_FROM_*` | **ABSENTS** | `vercel env ls production` (noms) |
+| `UPSTASH_REDIS_REST_URL` | **PRÉSENT** (4 h) | `vercel env ls production` |
+| `UPSTASH_REDIS_REST_TOKEN` | **ABSENT (bloquant)** | `vercel env ls production` → routes financières en **503** |
 | Migration P2 (RLS vendeur) | **NON APPLIQUÉE** | registre distant = `20261009190000` |
 | Go-live production | **BLOQUÉ** | `UPSTASH_*` et `BREVO_API_KEY` absents ; voir §6/§7 |
 
-**Décision : PAS PRÊT POUR LE GO-LIVE.** Le blocage technique majeur (build Vercel)
-et le blocage de sécurité majeur (RPC) sont corrigés et vérifiés. Restent des
-prérequis opérationnels qui exigent une intervention humaine (§7).
+**Décision : PAS ENCORE PRÊT POUR LE GO-LIVE TRANSACTIONNEL.** Le site est **déployé
+et Ready** en production (`https://atemi-preview.vercel.app`, 200), le build passe
+(78 routes), le SEO est corrigé, et le blocage de sécurité RPC est résolu. Reste un
+seul prérequis technique court (`UPSTASH_REDIS_REST_TOKEN`) plus des prérequis
+opérationnels (sauvegarde Supabase, e-mails Brevo, domaine canonique) qui exigent
+une intervention humaine (§7). Aucun de ces points ne peut être levé en autonomie :
+
+---
+
+## 1bis. Correction du 429 (priorité absolue, session du 2026-10-17)
+
+### Cause racine
+
+`rate-limit.ts` (`upstashCheck`) exigeait `UPSTASH_REDIS_REST_URL` **et**
+`UPSTASH_REDIS_REST_TOKEN` pour tout préfixe financier (`rl:order:`, `rl:pay:`) en
+production. `URL` est présente mais `TOKEN` **absent** → la condition
+`(!url || !token)` (l.91) retournait `allowed:false` avec `retryAfterMs:60000`, et
+chaque route traduisait ce refus en **429 « Trop de requêtes »**. Résultat : le
+message mobile « Trop de requêtes, réessayez dans 60 s » était **faux** (aucun quota
+n'avait été atteint) et revenait après chaque tentative. Le fail-closed était
+souhaitable ; seul le **diagnostic** (429 vs indisponibilité) était incorrect.
+
+### Correction (fail-closed préservé, diagnostic exact)
+
+- `rate-limit.ts` : nouveau champ `reason` sur `RateLimitResult`
+  (`'ok' | 'limited' | 'unavailable'`). `unavailable` = dépendance obligatoire
+  absente/échouante ; `limited` = vrai quota dépassé. Export de `RateLimitResult`.
+- `api-rate-limit.ts` (nouveau) : `rateLimitResponse(rl)` mappe
+  `unavailable` → **503** (avec `Retry-After`), `limited` → **429**, `ok` → `null`
+  (aucune réponse). Message 503 générique, sans fuite de config.
+- 7 routes financières (`orders`, `payment/initiate`, `payment/confirm`,
+  `order/recovery`, `payment/kkiapay/verify`, `payment/mock/confirm`,
+  `payment/webhook`) passent par ce helper. **Aucune n'a été ouverte** (toujours
+  bloquée sans Redis) — seule la sémantique HTTP a changé.
+- `checkout/page.tsx` : le jeton d'idempotence est désormais **stable par payload**
+  (`useRef` + régénération à la changement du panier/formulaire) au lieu d'être
+  régénéré à **chaque clic**. Un double-clic ou une réessai réseau réutilise la
+  même clé → le serveur déduplique (pas de commandes en double). Le bouton reste
+  `disabled={loading}` pendant l'envoi.
+
+### Preuves en production (après déploiement `atemi-preview-rjvhvu97t`)
+
+| Route | Avant | Après |
+|---|---|---|
+| `POST /api/orders` | 429 « Trop de requêtes » | **503** `Retry-After: 60`, « Le service de commande est temporairement indisponible » |
+| `POST /api/payment/initiate` | 429 | **503** |
+| `/`, `/products`, `/sitemap.xml` | 200 | 200 (inchangé) |
+
+Le parcours reste **bloqué** (fail-closed, correct) tant que le token Upstash n'est
+pas fourni — mais l'utilisateur n'est plus induit en erreur. Dès l'ajout du token,
+les endpoints repasseront en fonctionnement normal (429 uniquement sur vrai quota).
+
+### Fichiers modifiés
+
+`src/lib/rate-limit.ts`, `src/lib/api-rate-limit.ts` (nouveau),
+`src/app/api/{orders,payment/initiate,payment/confirm,order/recovery,payment/kkiapay/verify,payment/mock/confirm,payment/webhook}/route.ts`,
+`src/app/checkout/page.tsx`,
+tests : `src/lib/__tests__/security/rate-limit-availability.test.ts` (nouveau, 24 tests),
+`order-recovery.test.ts`, `public-api-routes.test.ts` (champ `reason` ajouté aux mocks).
 
 ---
 
@@ -114,18 +176,19 @@ lint complet s'exécute aussi pendant `next build`.
 
 ## 4. État Git
 
-- Branche : `feat/catalogue-background`, HEAD **`ecc6275`**. **Aucun push effectué**
-  (`origin/master` = `16111de`).
-- Modifications non commitées :
-  - ` M src/components/catalog-hero.tsx` — image de fond du hero `/products`.
-  - ` D public/hero-catalogue.webp` — remplacée par la nouvelle image.
-  - ` M vercel.json` — **correctif framework (2.1)**.
-  - `?? public/images/` — `public/images/hero-catalogue.webp` (44 Ko, WebP 1600×720,
-    source Unsplash License).
-  - `?? .playwright-mcp/`, `npm-audit-all.json`, `npm-audit-omit.json`,
-    `ns1_network.txt`, `ns1_network_full.txt`, `tmp-jest.json`, `tmp_envscan.ps1`,
-    `tmp_filelist.txt` — artefacts temporaires, à nettojer/ignorer avant commit.
-- `.vercel/` bien ignoré (`.gitignore:60`).
+- Branche : `feat/catalogue-background`, HEAD **`3709954`**. **Poussée sur `origin`**
+  (`https://github.com/djef27/ATEMI.git`) ; `origin/master` = `16111de`
+  (la branche locale est en avance de 10 sur `origin/master`).
+- Derniers commits : `d2610d4`, `8483c9b` (hero `/products`), `260982e`,
+  `76fe47c`, `bd1a9fa` (SEO Phase 7), `b95fadd`, `3709954` (migration
+  `SECURITY DEFINER`, locale uniquement).
+- `src/`, `public/`, `vercel.json`, `supabase/migrations`, `docs` sont **propres**
+  (tout est commité). Working tree : uniquement `.agents/skills/*` et
+  `tsconfig*.json` modifiés (préexistants).
+- `.vercel/` bien ignoré (`.gitignore:60`). Tous les artefacts temporaires de cette
+  session (`.out`, `bou.txt`, `tmp_*`, `npm-audit-*.json`, `ns1_network*.txt`,
+  `.playwright-mcp/`) ont été **supprimés** — `git status --porcelain` ne montre
+  plus aucun fichier non suivi.
 
 ---
 
@@ -138,6 +201,21 @@ lint complet s'exécute aussi pendant `next build`.
   - `20261013100000_scope_orders_vendor_read_to_authenticated.sql` — **NON appliquée**.
 - Sauvegardes : `{"walg_enabled":true,"pitr_enabled":false,"backups":[],"physical_backup_data":{}}`
   → **aucune sauvegarde restaurable**. Aucune procédure de restauration vérifiée.
+  Ni mot de passe rôle PostgreSQL ni URI directe disponibles localement → pas de
+  `pg_dump` possible ; le PITR est une option **payante** (Plan Pro).
+- Sécurité `SECURITY DEFINER` (constaté 2026-10-17) : le dump distant
+  (`remote_schema_backup.sql`) contient **16 fonctions `SECURITY DEFINER` sans
+  `SET search_path`** — `confirm_deposit_payment`, `create_delivery_when_ready`,
+  `create_order`, `get_admin_order_summary`, `get_my_role`, `get_my_vendor_id`,
+  `get_order_receipt`, `get_order_tracking`, `is_admin`, `is_driver`, `is_vendor`,
+  `prepare_admin_order_notification`, `prepare_order_notifications`,
+  `prepare_vendor_order_notification`, `trigger_order_notifications`,
+  `update_delivery_status`. Sans `search_path` fixé, ces fonctions résolvent les
+  objets dans le `search_path` de l'appelant → risque d'usurpation de schéma.
+  **Correction prête** : `20261017120000_harden_security_definer_search_path.sql`
+  (idempotente, non destructive, ajoutant `SET search_path = pg_catalog, public`),
+  commitée `3709954`. **Décision utilisateur : activer d'abord une sauvegarde/PITR**
+  → migration **non appliquée à distance**.
 - Attention : appliquer les migrations pendantes nécessite le mot de passe du rôle
   PostgreSQL (la tentative du 2026-10-13 a échoué sur l'authentification) **et** une
   autorisation explicite, et surtout une sauvegarde préalable.
@@ -166,8 +244,10 @@ lint complet s'exécute aussi pendant `next build`.
   - `BREVO_API_KEY`, `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`
     → l'envoi d'e-mails est **fail-closed** depuis `72cc987` : aucune confirmation
     de commande sera envoyée.
-  - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-    → le rate-limit serveur ne peut pas être vérifié en production.
+  - **`UPSTASH_REDIS_REST_TOKEN`** → c'est **le seul prérequis manquant** au
+    rate-limit ; `UPSTASH_REDIS_REST_URL` est **désormais présent** (ajouté via
+    dashboard il y a ~4 h). Sans le token, `rate-limit.ts:91-97` refuse tout
+    endpoint financier en production (fail-closed, `retryAfterMs: 60000`).
   - `ELEVENLABS_API_KEY`, `TIKTOK_CLIENT_KEY`, `CONTENT_ENGINE_ENABLED` (optionnels).
 - Domaines : `vercel domains ls` → **0 domaine** sous `atemi`. Aucun domaine
   personnalisé attaché. Donc **le déploiement Production n'est pas exposé publiquement
@@ -213,11 +293,14 @@ lint complet s'exécute aussi pendant `next build`.
   Cause : `src/lib/rate-limit.ts` traite tout préfixe `rl:pay:` / `rl:order:`
   comme *endpoint financier* et, **en production, refuse tout si
   `UPSTASH_REDIS_REST_URL`/`_TOKEN` ne sont pas définis** (fail-closed,
-  `retryAfterMs: 60000`). Upstash étant absent de Vercel, **aucune commande,
+  `retryAfterMs: 60000`). Depuis, `UPSTASH_REDIS_REST_URL` **a été ajouté** via le
+  dashboard Vercel, mais **`UPSTASH_REDIS_REST_TOKEN` est toujours absent** → la
+  condition `(!url || !token)` de `rate-limit.ts:91` reste vraie et **aucune commande,
   aucun paiement, aucune récupération invité ne peut aboutir en production.**
   C'est un comportement volontairement sûr (protection anti-brute-force), mais il
-  rend le site **non fonctionnel** côté transaction tant que Upstash n'est pas
-  configuré.
+  rend le site **non fonctionnel** côté transaction tant que le token n'est pas
+  configuré. Re-vérifié 2026-10-17 : `POST /api/orders` → 429,
+  `POST /api/payment/initiate` → 429, `/` → 200.
 - Note de protection : le déploiement expose `deploymentProtection:
   ["vercel_authentication"]`, mais l'accès anonyme racine répond **200**
   (la protection ne s'applique pas à l'alias de production dans ce cas).
@@ -280,16 +363,22 @@ lint complet s'exécute aussi pendant `next build`.
 
 ## 7. Bloqueurs du go-live (intervention humaine requise)
 
-1. **`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (bloquant n°1)** : sans
-   eux, **toutes** les routes transactionnelles renvoient 429 en production
-   (fail-closed) → le site ne peut pas prendre de commande ni de paiement.
-   À définir **dans le dashboard Vercel** (Production + Preview).
+1. **`UPSTASH_REDIS_REST_TOKEN` (bloquant n°1 — le plus court à lever)** : l'URL est
+   déjà en place ; il manque **le token REST** de la **même** base Upstash. Sans lui,
+   **toutes** les routes transactionnelles renvoient 429 en production (fail-closed) →
+   le site ne peut pas prendre de commande ni de paiement. Copier le token depuis le
+   dashboard Upstash (base déjà créée) et l'ajouter dans le dashboard Vercel en
+   Production **et** Preview (jamais dans le chat ni dans un fichier du dépôt).
 2. **`BREVO_API_KEY` (+ `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`)** : sans elle,
    l'envoi d'e-mails est fail-closed (`72cc987`) → aucune confirmation de commande.
    À définir dans le dashboard Vercel. Ne jamais coller ces secrets dans le chat
    ni dans un fichier du dépôt.
-3. **Sauvegarde Supabase** : activer/restaurer une sauvegarde réelle
-   (`backups: []`, `pitr_enabled: false`) avant toute migration de production.
+3. **Sauvegarde Supabase (prérequis à toute migration)** : `backups: []`,
+   `pitr_enabled: false` → **aucun point de restauration**. Options : (a) fournir le
+   mot de passe rôle PostgreSQL pour un `pg_dump` logique, ou (b) autoriser l'activation
+   du PITR/Backups (option **payante** Plan Pro). **Décision utilisateur : sauvegarde
+   d'abord** → la migration `20261017120000` (SECURITY DEFINER `search_path`) reste
+   locale tant que ce n'est pas fait.
 4. **Migrations pendantes** : réconcilier le registre distant (`20261011120000`
    appliquée hors registre) puis appliquer `20261013100000` — **autorisation
    explicite + sauvegarde préalable obligatoires**.
@@ -301,11 +390,12 @@ lint complet s'exécute aussi pendant `next build`.
    MX/SPF/TXT/DKIM Proton**. Mettre à jour les e-mails publics et les CGV en conséquence.
 6. **Clés de paiement Live** : `KKIAPAY_SANDBOX` est présent ; passer en production
    uniquement **après** validation E2E sandbox (`E2E_SANDBOX_TEST_PROCEDURE.md`).
-7. **Branche Git** : commits poussés sur `feat/catalogue-background` (`260982e`),
-   incluant `278cb39` et `72cc987`. La branche `master` locale reste en avance de 2
-   sur `origin/master` — ouvrir une PR pour fusionner si souhaité.
-8. **Nettoyage** : retirer les artefacts temporaires (`tmp_*`, `ns1_network*.txt`,
-   `npm-audit-*.json`, `.playwright-mcp/`) — non commités.
+7. **Branche Git** : commits **poussés** sur `feat/catalogue-background` (`3709954`),
+   incluant le hero, le SEO et la migration SECURITY DEFINER. La branche locale est
+   en avance de **10** sur `origin/master` (`16111de`) — ouvrir une PR pour fusionner
+   si souhaité.
+8. **Nettoyage** : **fait** — plus aucun artefact temporaire non suivi dans le
+   working tree.
 
 ---
 
@@ -355,4 +445,8 @@ Production non protégé.
   documenter » + sauvegarde requise).
 - **Aucun paiement E2E** exécuté, aucun paiement réel activé (paiements en
   production restés sur clés **sandbox**).
-- **Push Git effectué** : `feat/catalogue-background` → `origin` (`260982e`).
+- **Push Git effectué** : `feat/catalogue-background` → `origin` (`3709954`).
+- **Aucun token Upstash, aucun mot de passe base Supabase, aucune clé Brevo** obtenus
+  en autonomie : ces informations vivent dans des dashboards externes (Upstash,
+  Supabase, Brevo) auxquels l'assistant n'a **pas** les identifiants — intervention
+  humaine incontournable (§7).

@@ -70,7 +70,7 @@ function makeSupabaseQuery(result: unknown) {
 describe('contact and newsletter routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    rateLimitMock.mockResolvedValue({ allowed: true, remaining: 29, retryAfterMs: 0 });
+    rateLimitMock.mockResolvedValue({ allowed: true, remaining: 29, retryAfterMs: 0, reason: 'ok' });
     clientIpMock.mockReturnValue('203.0.113.8');
   });
 

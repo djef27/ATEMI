@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { orderRecoverySchema } from '@/lib/validations';
 import { getClientIp } from '@/lib/request';
 
@@ -23,12 +24,8 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
     const rl = await checkRateLimit(`ip:${ip}`, RATE_LIMIT_CONFIGS.orderRecovery);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Trop de demandes. Réessayez plus tard.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const rateLimited = rateLimitResponse(rl);
+    if (rateLimited) return rateLimited;
 
     let body: unknown;
     try {

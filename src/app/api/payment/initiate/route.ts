@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { paymentInitiateSchema } from '@/lib/validations';
 import { getPaymentConfig } from '@/lib/payment/config';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { createCinetPayPayment } from '@/lib/payment/providers/cinetpay';
 import { getPaymentMethods } from '@/lib/payment/countries';
 import { isOrderStatusTerminal } from '@/lib/order-status';
@@ -32,12 +33,8 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
     const rl = await checkRateLimit(`ip:${ip}`, RATE_LIMIT_CONFIGS.paymentInitiate);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Trop de requêtes. Réessayez dans une minute.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const rateLimited = rateLimitResponse(rl);
+    if (rateLimited) return rateLimited;
 
     let body: unknown;
     try {

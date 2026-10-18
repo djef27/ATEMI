@@ -49,7 +49,7 @@ describe('Order recovery — route execution', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clientIpMock.mockReturnValue('203.0.113.10');
-    rateLimitMock.mockResolvedValue({ allowed: true, remaining: 4, retryAfterMs: 0 });
+    rateLimitMock.mockResolvedValue({ allowed: true, remaining: 4, retryAfterMs: 0, reason: 'ok' });
   });
 
   it('returns the matching guest order through the server-side admin client', async () => {
@@ -90,7 +90,7 @@ describe('Order recovery — route execution', () => {
   });
 
   it('rejects rate-limited requests before querying orders', async () => {
-    rateLimitMock.mockResolvedValue({ allowed: false, remaining: 0, retryAfterMs: 15000 });
+    rateLimitMock.mockResolvedValue({ allowed: false, remaining: 0, retryAfterMs: 15000, reason: 'limited' });
 
     const response = await recoverOrder(makeRecoveryRequest({
       order_number: 'ATM-20261011-ABC12345',

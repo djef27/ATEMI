@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import {
   checkIdempotencyKey,
   generateRequestHash,
@@ -19,12 +20,8 @@ export async function POST(request: NextRequest) {
 
     const ip = getClientIp(request);
     const rateLimit = await checkRateLimit(`ip:${ip}`, RATE_LIMIT_CONFIGS.paymentWebhook);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Trop de requêtes. Réessayez dans une minute.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } }
-      );
-    }
+    const rateLimited = rateLimitResponse(rateLimit);
+    if (rateLimited) return rateLimited;
 
     const config = getPaymentConfig();
     if (config.provider !== 'kkiapay') {

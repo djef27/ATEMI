@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/contexts/auth-context';
@@ -34,6 +34,12 @@ interface PaymentMethod {
   displayName: string;
 }
 
+function generateIdempotencyToken(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function CheckoutPage() {
   const { items, getSubtotal, getDeposit, getRemaining, getVendorId } = useCart();
   const { user, profile } = useAuth();
@@ -56,6 +62,46 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
+
+  // Idempotency: reuse the SAME key for a given order payload so that a
+  // double-tap or a retry after a network error is deduplicated server-side
+  // (no duplicate orders). A new key is minted only when the payload changes,
+  // so a genuinely edited cart can still place a new order.
+  const orderSignature = useMemo(
+    () =>
+      JSON.stringify({
+        items: items.map((i) => [i.product_id, i.quantity]),
+        fullName,
+        phone,
+        whatsapp,
+        email,
+        address,
+        city,
+        country,
+        paymentMethod,
+        notes,
+        deliveryRequired,
+        deliveryZoneId,
+      }),
+    [
+      items,
+      fullName,
+      phone,
+      whatsapp,
+      email,
+      address,
+      city,
+      country,
+      paymentMethod,
+      notes,
+      deliveryRequired,
+      deliveryZoneId,
+    ]
+  );
+  const idempotencyTokenRef = useRef<string>(generateIdempotencyToken());
+  useEffect(() => {
+    idempotencyTokenRef.current = generateIdempotencyToken();
+  }, [orderSignature]);
 
   const subtotal = getSubtotal();
   const deposit = getDeposit();
@@ -232,10 +278,9 @@ export default function CheckoutPage() {
 
     setLoading(true);
 
-    // Generate client-side idempotency token to prevent double-submit
-    const idempotencyToken = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // Payload-stable idempotency token (minted once per distinct order payload,
+    // reused on retry / double-tap so the server can dedupe — see ref above).
+    const idempotencyToken = idempotencyTokenRef.current;
 
     try {
       const response = await fetch('/api/orders', {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient, createServerSupabaseClient } from '@/lib/supabase/server';
 import { paymentConfirmSchema } from '@/lib/validations';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { checkIdempotencyKey, storeIdempotencyResponse, generateRequestHash, getIdempotencyKey, IdempotencyContext } from '@/lib/idempotency';
 import { validateServiceRoleKey } from '@/lib/payment/config';
 import { dispatchPaymentActions } from '@/lib/payment/dispatch';
@@ -115,22 +116,11 @@ export async function POST(request: NextRequest) {
 
     const rl = await checkRateLimit(user.id, RATE_LIMIT_CONFIGS.paymentConfirm);
 
-    if (!rl.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Trop de requêtes. Réessayez dans ${Math.ceil(rl.retryAfterMs / 1000)}s`,
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)),
-            'X-RateLimit-Limit': String(RATE_LIMIT_CONFIGS.paymentConfirm.max),
-            'X-RateLimit-Remaining': String(rl.remaining),
-          },
-        }
-      );
-    }
+    const rateLimited = rateLimitResponse(rl, {
+      'X-RateLimit-Limit': String(RATE_LIMIT_CONFIGS.paymentConfirm.max),
+      'X-RateLimit-Remaining': String(rl.remaining),
+    });
+    if (rateLimited) return rateLimited;
 
     // ------------------------------------------------------------------
     // 6b. Idempotency check (persistent DB)
