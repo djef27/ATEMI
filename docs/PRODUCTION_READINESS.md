@@ -697,3 +697,73 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
 - **Restaurer dans un projet Supabase vierge** : faisable pour `public` +
   comptes minimaux, mais **pas** pour les identités/authentifications réelles.
 - **Copie hors machine** de `C:\dev\atemi-db-backups\` (redondance).
+
+## 12. État final — 2026-10-19 (mise à jour de go-live)
+
+### 12.1 Acquis (vérifiés)
+
+- **Site en production** : `https://atemi-preview.vercel.app` (alias du projet
+  Vercel `atemi-preview`). Healthcheck 200 sur `/`, `/checkout`, `/contact`,
+  `/admin`, `/products/:slug`, `GET /api/payment/methods?country=BJ`.
+- **Menu mobile iOS corrigé** : cause racine prouvée (`backdrop-filter` du
+  `<header>` créait un containing block pour les descendants `position:fixed` →
+  panneau écrasé à 64 px). Panneau déplacé hors du header, vérifié en headless
+  Chromium (panneau 844 px, 17/17 liens, fermetures X/Backdrop/Escape/lien OK,
+  desktop inchangé). Déployé.
+- **5 migrations appliquées en production** (`supabase migration list --linked`
+  = 36/36 synchronisées) : recovery PII, vendor scope RPC, search_path
+  SECURITY DEFINER, nullable delivery pickup, messages RPC génériques.
+- **Rate-limiting Upstash actif** en prod (fail-closed documenté, plus de
+  fausses ruptures de quota 429).
+- **Sauvegarde logique locale vérifiée** (`C:\dev\atemi-db-backups\`,
+  restauration prouvée, §11).
+- **Code versionné** : commit `d7fa21c` poussé sur
+  `github.com/djef27/ATEMI`, branche `feat/catalogue-background` (32 fichiers :
+  fix menu iOS, galerie vidéo, PhoneInput/regions, durcissement API,
+  migrations 20261018*).
+- **Paiements testables** : KKiaPay sandbox autorisée en prod
+  (`KKIAPAY_ALLOW_SANDBOX_PRODUCTION`).
+
+### 12.2 Reste à faire pour le lancement réel (décision/action humaine)
+
+1. **Domaine définitif (bloquant #1 — sans lui, pas de lien durable)**
+   - `atemi.bj` : **NXDOMAIN** (aucun enregistrement DNS). À acheter auprès
+     d'un registrar `.bj` (ex. BENINIC/Cotonou Net ou registrar .bj agréé).
+   - `atemi.com` : résout vers **Squarespace** (site tiers). À récupérer ou
+     abandonner.
+   - Dès choix fait : attacher le domaine au projet Vercel
+     (`vercel domains add` ou dashboard), créer les enregistrements DNS
+     recommandés (A/ALIAS ou CNAME `www`), puis mettre à jour
+     `NEXT_PUBLIC_APP_URL` en Production et redéployer (domine sitemap,
+     robots, canonicals, OG et URLs de callback de paiement).
+2. **E-mail transactionnel (bloquant #2 — confirmations de commande)**
+   - Le site affiche encore le placeholder `votre@email.com` sur `/contact`.
+   - Créer la boîte officielle (ex. `contact@…`), un compte Brevo (gratuit
+     300 j/j) ou Resend, générer la clé API côté fournisseur, puis renseigner
+     dans Vercel (Production **et** Preview, via dashboard — jamais dans le
+     dépôt ni le chat) : `BREVO_API_KEY`, `EMAIL_FROM_NAME`,
+     `EMAIL_FROM_ADDRESS`, et `NEXT_PUBLIC_CONTACT_EMAIL` = la vraie adresse.
+   - Valider : passer une commande de test → e-mail reçu.
+3. **Paiements en live (bloquant #3 — encaisser réellement)**
+   - KKiaPay : compte marchand validé + passage en production **après**
+     domaine public et validation E2E sandbox
+     (`E2E_SANDBOX_TEST_PROCEDURE.md`) ; retirer alors
+     `KKIAPAY_ALLOW_SANDBOX_PRODUCTION` et remplacer les clés sandbox par les
+     clés live.
+   - CinetPay/FedaPay : non configurés (aucune variable) — à ajouter
+     uniquement si le choix métier les retient.
+4. **Redondance de sauvegarde** : copier `C:\dev\atemi-db-backups\` vers un
+   cloud externe (Drive/Dropbox/USB hors site). Optionnelle : activer les
+   backups Supabase gérés (Plan Pro, payant) ou PITR.
+5. **PR vers `master`** : la branche `feat/catalogue-background` est en
+   avance sur `master` — ouvrir une PR pour tracer la fusion une fois le
+   lancement stabilisé.
+
+### 12.3 Commandes prêtes (à exécuter dès que le domaine est choisi)
+
+```
+vercel domains add <domaine>          # attacher au projet atemi-preview
+vercel env add NEXT_PUBLIC_APP_URL production   # valeur: https://<domaine>
+vercel --prod                         # redéployer avec la bonne URL
+```
+
