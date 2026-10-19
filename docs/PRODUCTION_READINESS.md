@@ -723,6 +723,19 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
   migrations 20261018*).
 - **Paiements testables** : KKiaPay sandbox autorisée en prod
   (`KKIAPAY_ALLOW_SANDBOX_PRODUCTION`).
+- **Tunnel commande + paiement prouvé de bout en bout en production**
+  (2026-10-19) : `POST /api/orders` → commande `CMD-20261019-192837-A856AE`
+  créée (200), `POST /api/payment/initiate` → KKiaPay sandbox OK
+  (26 277 F, `sandbox: true`). Nettoyage intégral vérifié : paiements,
+  order_items et commande de test supprimés, stock du produit restauré
+  (25), **0 ligne de test restante**.
+- **Les e-mails ne bloquent jamais la vente** : `sendEmail` est
+  fire-and-forget (`orders/route.ts`), encapsulé en try/catch côté
+  dispatch, et ne throw jamais sans `BREVO_API_KEY` → sans clé email, le
+  site commande et encaisse quand même (e-mail simplement non envoyé, logé).
+  Les confirmations WhatsApp sont déjà configurées en production.
+- **`atemi.bj` est achetable** : whois `whois.nic.bj` (2026-10-19) renvoie
+  `No Object Found` → domaine non enregistré.
 
 ### 12.2 Reste à faire pour le lancement réel (décision/action humaine)
 
