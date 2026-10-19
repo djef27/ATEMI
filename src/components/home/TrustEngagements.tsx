@@ -6,22 +6,22 @@ const engagements = [
   {
     icon: Truck,
     title: 'Livraison fiable',
-    description: 'Les options et zones de livraison disponibles sont précisées au moment de la commande.',
+    description: 'Zones et options indiquées au checkout.',
   },
   {
     icon: CreditCard,
     title: 'Paiement transparent',
-    description: 'Les moyens de paiement disponibles pour votre marché sont indiqués au checkout.',
+    description: 'Moyens de paiement indiqués au checkout.',
   },
   {
     icon: Shield,
     title: 'Informations protégées',
-    description: 'Consultez notre politique de confidentialité pour savoir comment vos données sont traitées.',
+    description: 'Politique de confidentialité consultable à tout moment.',
   },
   {
     icon: MessageCircle,
     title: 'Support WhatsApp',
-    description: 'Une question sur un produit ou une commande ? Écrivez-nous sur WhatsApp.',
+    description: 'Une question ? Écrivez-nous sur WhatsApp.',
   },
 ];
 

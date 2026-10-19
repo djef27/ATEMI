@@ -44,7 +44,7 @@ export default function ContactPage() {
         <div className="text-center mb-12">
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#1A1919] mb-4">Contactez-nous</h1>
           <p className="text-gray-600 max-w-xl mx-auto">
-            Une question, une suggestion ou un problème ? Nous sommes là pour vous aider.
+            Une question ? Écrivez-nous.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export default function ContactPage() {
               <div className="bg-white rounded-2xl border border-primary-100 p-8 shadow-sm text-center">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h2 className="font-serif text-xl font-bold text-[#1A1919] mb-2">Message envoyé</h2>
-                <p className="text-gray-600">Merci ! Nous vous répondrons dans les plus brefs délais.</p>
+                <p className="text-gray-600">Merci ! On vous répond.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-primary-100 p-6 shadow-sm space-y-4">

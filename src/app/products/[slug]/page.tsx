@@ -269,7 +269,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="mt-6 p-4 bg-primary-50 rounded-lg text-sm text-gray-600">
-              <p>Modalités de paiement affichées au checkout. Selon la commande, un acompte de {productDepositRate}% peut être demandé ; les options de règlement du solde et de réception sont précisées avant validation.</p>
+              <p>Acompte de {productDepositRate}&nbsp;% — modalités au checkout.</p>
             </div>
           </div>
         </div>

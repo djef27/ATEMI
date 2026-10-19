@@ -76,7 +76,7 @@ function ConfirmationContent() {
               <div>
                 <h3 className="font-medium text-gray-900">1. Payez l&apos;acompte</h3>
                 <p className="text-sm text-gray-600">
-                  Un agent vous contactera pour confirmer le paiement de votre acompte.
+                  Un agent vous contacte pour confirmer.
                 </p>
               </div>
             </div>
@@ -87,7 +87,7 @@ function ConfirmationContent() {
               <div>
                 <h3 className="font-medium text-gray-900">2. Préparation</h3>
                 <p className="text-sm text-gray-600">
-                  Le vendeur prépare votre commande après confirmation du paiement.
+                  Après confirmation du paiement.
                 </p>
               </div>
             </div>
@@ -98,7 +98,7 @@ function ConfirmationContent() {
               <div>
                 <h3 className="font-medium text-gray-900">3. Livraison</h3>
                 <p className="text-sm text-gray-600">
-                  Livraison à domicile ou selon les modalités convenues.
+                  À domicile ou selon convenu.
                 </p>
               </div>
             </div>

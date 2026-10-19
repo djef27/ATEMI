@@ -21,7 +21,7 @@ export default async function CategoryGrid() {
           <SectionHeader
             tagline="Par catégorie"
             title="Des envies, des univers"
-            description="Explorez les sélections de nos vendeurs et trouvez la pièce qui vous ressemble."
+            description="Les sélections de nos vendeurs."
             align="center"
           />
         </ScrollReveal>

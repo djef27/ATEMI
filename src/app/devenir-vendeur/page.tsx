@@ -70,7 +70,7 @@ export default function VendorRegistrationPage() {
           </div>
           <h1 className="font-serif text-3xl font-bold text-[#1A1919] mb-2">Devenir vendeur</h1>
           <p className="text-gray-600">
-            Rejoignez une marketplace qui met en lumière les talents africains. Les inscriptions vendeurs sont actuellement ouvertes au Bénin ; l’ouverture à d’autres marchés se fera progressivement.
+            Inscriptions ouvertes au Bénin — autres marchés progressivement.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export default function VendorRegistrationPage() {
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
               <h2 className="font-serif text-xl font-bold text-[#1A1919] mb-2">Demande envoyée</h2>
               <p className="text-sm text-gray-600 mb-6">
-                Votre demande de vendeur a été enregistrée. Un administrateur vérifiera votre compte sous 24-48h.
+                Demande enregistrée — vérification sous 24-48 h.
               </p>
               <Link href="/" className="inline-block px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800">
                 Retour à l&apos;accueil

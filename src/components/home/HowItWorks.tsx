@@ -8,17 +8,17 @@ const steps = [
   {
     icon: ShoppingBag,
     title: 'Choisissez vos produits',
-    description: 'Parcourez notre catalogue et trouvez ce qui vous plaît.',
+    description: 'Parcourez le catalogue.',
   },
   {
     icon: CreditCard,
     title: 'Payez l\'acompte',
-    description: 'Commandez en payant un pourcentage configuré par le vendeur.',
+    description: 'Pourcentage du prix fixé par le vendeur.',
   },
   {
     icon: Truck,
     title: 'Recevez à domicile',
-    description: 'Livraison à domicile. Payez le solde au moment de la réception.',
+    description: 'Solde à la réception.',
   },
 ];
 

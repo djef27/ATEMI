@@ -7,22 +7,22 @@ const steps = [
   {
     icon: ShoppingBag,
     title: 'Choisissez vos produits',
-    description: 'Parcourez le catalogue, consultez les informations de chaque article et ajoutez vos choix au panier.',
+    description: 'Ajoutez vos choix au panier.',
   },
   {
     icon: CreditCard,
     title: 'Vérifiez les options de paiement',
-    description: 'Au checkout, consultez les moyens de paiement et les modalités réellement proposés pour votre commande avant de la valider.',
+    description: 'Tout est affiché avant validation.',
   },
   {
     icon: Truck,
     title: 'Choisissez une option de réception',
-    description: 'Les options de livraison ou de retrait dépendent de votre zone et sont affichées au checkout lorsqu’elles sont disponibles.',
+    description: 'Livraison ou retrait, selon votre zone.',
   },
   {
     icon: CheckCircle,
     title: 'Suivez votre commande',
-    description: 'Après confirmation, retrouvez les informations et le suivi de votre commande dans votre espace client.',
+    description: 'Dans votre espace client.',
   },
 ];
 
@@ -36,7 +36,7 @@ export default function CommentCaMarchePage() {
             Comment ça marche&nbsp;?
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Atémi met en relation vendeurs et clients en Afrique. Notre premier marché est le Bénin ; les moyens de paiement et de livraison dépendent des options ouvertes pour chaque commande.
+            De la sélection à la réception, en quatre étapes.
           </p>
         </div>
 
@@ -67,7 +67,7 @@ export default function CommentCaMarchePage() {
         <div className="bg-[#1A1919] rounded-2xl p-6 sm:p-8 text-center">
           <h2 className="font-serif text-xl font-semibold text-white mb-2">Prêt à commander&nbsp;?</h2>
           <p className="text-gray-400 mb-6">
-            Parcourez notre catalogue et trouvez ce que vous recherchez.
+            Parcourez le catalogue.
           </p>
           <Link
             href="/products"

@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'À propos',
-  description: 'Découvrez Atémi, une marketplace africaine qui met en lumière les vendeurs, les créateurs et les communautés locales. Le Bénin est notre premier marché.',
+  description: 'Marketplace africaine de mode, beauté et accessoires — vendeurs et créateurs, au Bénin d&apos;abord.',
 };
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
             À propos d&apos;Atémi
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Une marketplace pensée pour les talents et les communautés d’Afrique, avec un lancement progressif marché par marché.
+            La marketplace des talents d&apos;Afrique — marché par marché.
           </p>
         </div>
 
@@ -25,15 +25,11 @@ export default function AboutPage() {
           <h2 className="font-serif text-2xl font-bold text-[#1A1919] mb-4">Notre mission</h2>
           <div className="prose prose-gray max-w-none">
             <p className="text-gray-600 leading-relaxed">
-              Atémi est née d&apos;une conviction simple : les communautés africaines regorgent de talents
-              créatifs et de produits de qualité. Nous construisons une plateforme moderne et accessible
-              pour aider les vendeurs à faire découvrir leur savoir-faire et permettre aux clients de
-              trouver des produits qui leur ressemblent.
+              Atémi aide les créateurs et vendeurs d&apos;Afrique à se faire découvrir, avec une
+              plateforme simple et fiable.
             </p>
             <p className="text-gray-600 leading-relaxed mt-4">
-              Notre nom vient du fon, langue parlée notamment au Bénin, où &ldquo;Atémi&rdquo; signifie
-              &ldquo;beauté&rdquo;. Cette origine fait partie de notre histoire ; notre ambition est de
-              célébrer la diversité des cultures et des créations africaines.
+              Notre nom vient du fon : &ldquo;Atémi&rdquo; signifie &ldquo;beauté&rdquo;.
             </p>
           </div>
         </section>
@@ -45,19 +41,19 @@ export default function AboutPage() {
             {[
               {
                 title: 'Qualité',
-                description: 'Nous mettons à disposition les informations produit fournies afin que chacun puisse choisir en connaissance de cause.',
+                description: 'Les informations produit sont fournies pour bien choisir.',
               },
               {
                 title: 'Confiance',
-                description: 'Les modalités de paiement et de livraison sont précisées avant la validation de chaque commande.',
+                description: 'Paiement et livraison précisés avant validation.',
               },
               {
                 title: 'Accessibilité',
-                description: 'Les moyens de paiement et les options de livraison varient selon les marchés et les zones effectivement disponibles.',
+                description: 'Moyens de paiement et livraison selon les marchés ouverts.',
               },
               {
                 title: 'Communauté',
-                description: 'Nous voulons soutenir les entrepreneurs locaux et les économies numériques africaines, marché par marché.',
+                description: 'Soutenir les entrepreneurs locaux, marché par marché.',
               },
             ].map((value) => (
               <div key={value.title} className="bg-white rounded-2xl border border-primary-100 p-6 shadow-sm">
@@ -73,10 +69,10 @@ export default function AboutPage() {
           <h2 className="font-serif text-2xl font-bold text-[#1A1919] mb-8">Comment ça marche</h2>
           <div className="space-y-6">
             {[
-              { step: '1', title: 'Choisissez vos produits', description: 'Parcourez notre catalogue et trouvez ce qui vous plaît.' },
-              { step: '2', title: 'Payez un acompte', description: 'Réservez votre commande en payant seulement un pourcentage du total.' },
-              { step: '3', title: 'Choisissez une option disponible', description: 'Les options de livraison ou de retrait dépendent du pays et de la zone proposés au checkout. Notre premier marché est le Bénin.' },
-              { step: '4', title: 'Solde à la livraison', description: 'Payez le reste du montant uniquement lorsque vous avez reçu et vérifié votre colis.' },
+              { step: '1', title: 'Choisissez vos produits', description: 'Parcourez le catalogue.' },
+              { step: '2', title: 'Payez un acompte', description: 'Un pourcentage du total seulement.' },
+              { step: '3', title: 'Choisissez une option disponible', description: 'Livraison ou retrait selon le pays et la zone.' },
+              { step: '4', title: 'Solde à la livraison', description: 'Le reste, à réception du colis.' },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-primary-900 text-white flex items-center justify-center font-bold shrink-0">
@@ -94,7 +90,7 @@ export default function AboutPage() {
         {/* CTA */}
         <section className="text-center bg-[#1A1919] rounded-2xl p-8 sm:p-12">
           <h2 className="font-serif text-2xl font-bold text-white mb-4">Prêt à découvrir Atémi ?</h2>
-          <p className="text-gray-300 mb-6">Parcourez notre sélection de produits de qualité.</p>
+          <p className="text-gray-300 mb-6">Parcourez le catalogue.</p>
           <Link
             href="/products"
             className="inline-block px-8 py-3 rounded-xl bg-white text-[#1A1919] font-semibold hover:bg-gray-100 transition-colors"

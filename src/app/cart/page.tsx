@@ -48,7 +48,7 @@ export default function CartPage() {
             </div>
             <h1 className="font-serif text-2xl font-bold text-[#1A1919] mb-2">Votre panier est vide</h1>
             <p className="text-gray-600 mb-6">
-              Parcourez notre catalogue pour trouver des produits.
+              Parcourez le catalogue.
             </p>
             <Link
               href="/products"

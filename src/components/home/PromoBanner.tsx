@@ -25,8 +25,7 @@ export default function PromoBanner() {
                 disponible
               </h2>
               <p className="text-gray-300 mb-8 max-w-md">
-                Découvrez une sélection de mode, beauté et accessoires auprès des vendeurs Atémi.
-                La disponibilité varie selon les produits et les marchés ouverts.
+                Mode, beauté et accessoires sélectionnés par nos vendeurs.
               </p>
               <Link
                 href="/products"

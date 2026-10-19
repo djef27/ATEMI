@@ -53,13 +53,13 @@ export default function NewsletterSignup() {
               Restez informé(e)
             </h2>
             <p className="text-gray-300 mb-8">
-              Recevez nos nouveautés et offres exclusives par email ou WhatsApp.
+              Nouveautés et offres par email ou WhatsApp.
             </p>
 
             {submitted ? (
               <div role="status" className="flex items-center justify-center gap-2 text-primary-400">
                 <CheckCircle className="w-5 h-5" aria-hidden="true" />
-                <span className="font-medium">Merci ! Vous serez informé(e) de nos nouveautés.</span>
+                <span className="font-medium">Merci ! Inscrit(e).</span>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">

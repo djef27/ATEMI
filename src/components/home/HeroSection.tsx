@@ -25,8 +25,7 @@ export default function HeroSection() {
             <span className="text-primary-400"> à portée de main</span>
           </h1>
           <p className="mt-4 sm:mt-5 text-base sm:text-xl text-gray-300 max-w-lg leading-relaxed">
-            Découvrez les créations et les vendeurs qui font la richesse des communautés africaines.
-            Atémi démarre au Bénin et ouvre progressivement les marchés selon les paiements, livraisons et zones réellement disponibles.
+            Créations et vendeurs d&apos;Afrique, disponibles au Bénin.
           </p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Link

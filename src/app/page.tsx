@@ -15,7 +15,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: 'Atémi — La marketplace des talents africains',
   description:
-    'Découvrez les créations et les vendeurs d’Afrique sur Atémi. Notre premier marché est le Bénin ; les moyens de paiement et zones de livraison disponibles sont précisés selon votre pays.',
+    'Atémi — créations et vendeurs d’Afrique : mode, beauté et accessoires, au Bénin.',
 };
 
 async function safeGetProducts(

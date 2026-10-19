@@ -288,11 +288,11 @@ export default function RecuPage() {
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="font-medium text-gray-900">2. Préparation</p>
-                  <p className="text-gray-600">Le vendeur prépare votre commande après confirmation du paiement.</p>
+                  <p className="text-gray-600">Après confirmation du paiement.</p>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">3. Livraison</p>
-                  <p className="text-gray-600">Livraison à domicile ou selon les modalités convenues.</p>
+                  <p className="text-gray-600">À domicile ou selon convenu.</p>
                 </div>
               </div>
             </div>

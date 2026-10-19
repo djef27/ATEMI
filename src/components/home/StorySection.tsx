@@ -36,14 +36,9 @@ export default async function StorySection() {
               </h2>
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
-                  Atémi met en lumière les vendeurs, les créateurs et les communautés d&apos;Afrique.
-                  Notre ambition est de faciliter la découverte et l&apos;achat de produits africains
-                  grâce à une expérience en ligne simple et fiable.
-                </p>
-                <p>
-                  Nous commençons au Bénin et ouvrirons les marchés progressivement. Les moyens de
-                  paiement et les zones de livraison proposés sont ceux effectivement disponibles
-                  pour le pays sélectionné.
+                  Atémi met en lumière les créateurs et vendeurs d&apos;Afrique. Ouvert au Bénin,
+                  puis progressivement ailleurs — paiements et livraisons selon les zones
+                  disponibles.
                 </p>
               </div>
               <div className="mt-8 flex items-center gap-6">

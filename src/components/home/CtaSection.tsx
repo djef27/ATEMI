@@ -23,7 +23,7 @@ export default function CtaSection() {
                 Prêt à commander ?
               </h2>
               <p className="text-gray-300 mb-8 max-w-lg mx-auto">
-                Explorez notre catalogue et trouvez les produits qui vous correspondent.
+                Parcourez le catalogue.
               </p>
               <Link
                 href="/products"
