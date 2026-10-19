@@ -485,16 +485,22 @@ Emplacement : **`C:\dev\atemi-db-backups\`** — **hors du dépôt Git** (jamais
 
 | Fichier | Taille | SHA256 |
 |---|---|---|
-| `schema.sql` | 112 384 B | `4C2108507DBA77F9DF91AC6DA15C443FA634C43A277C573ACD7BF8957D11CF6A` |
-| `data.sql` | 142 593 B | `8267784740553665854E5BF0B14698AF058B09C117EF51714291BF038609903D` |
+| `schema.sql` | 112 567 B | `5A23BBF3C9C974EE73DAE68A46EE868A6000EB1BE3ACB36177CFCD1A2EEAD8F7` |
+| `data.sql` | 149 488 B | `89AB4329228EC375362EE30E682F166DD342F40110F68D19D8F3F4386FB12ED7` |
 | `manifest.json` | — | comptages, empreintes, dépendances FK, ordre d'insertion, migrations appliquées |
+
+**Rafraîchi le 2026-10-19T20:52Z** (§11.9) : l'ancien dump
+(2026-10-18T15:53Z, 298 lignes, 32 migrations) est **préservé** dans
+`archive\2026-10-18\` avec son manifeste (preuve de restauration §11.3
+inchangée).
 
 `schema.sql` (13 sections extraites des catalogues) : extensions (informatif),
 types/enum, tables + colonnes générées/identité, contraintes PK/UNIQUE/CHECK,
 **FK en dernier**, index hors contrainte, séquences, vues, fonctions, triggers,
 activation RLS, policies, grants.
 
-`data.sql` : **25 tables / 298 lignes**, générées en `INSERT … json_populate_recordset`
+`data.sql` : **25 tables / 310 lignes** (rafraîchissement du 2026-10-19 ;
+298 lignes au dump initial), générées en `INSERT … json_populate_recordset`
 (colonnes générées exclues, **ordre FK respecté** par tri topologique des 32
 dépendances), plus les **4 comptes `auth.users`** nécessaires à la FK
 `profiles → auth.users`.
@@ -698,6 +704,37 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
   comptes minimaux, mais **pas** pour les identités/authentifications réelles.
 - **Copie hors machine** de `C:\dev\atemi-db-backups\` (redondance).
 
+### 11.9 Rafraîchissement du dump — 2026-10-19
+
+Le dump du 2026-10-18 prédate les 5 migrations `20261018*` et l'activité du
+19/10 → rafraîchi pour que la sauvegarde reflète exactement le live.
+
+| Contrôle | Résultat |
+|---|---|
+| Export schéma (13 sections catalogue) | **13/13 OK, 0 échec** |
+| Export données | **25 tables / 310 lignes / 0 échec**, 32 FK, 0 cycle forcé |
+| Migrations dans le manifeste | **37/37** — identiques local ↔ distant (aucun écart) |
+| Ancien dump | **archivé** `archive\2026-10-18\` (schema + data + manifest) |
+| Restauration complète (§11.4) | **non re-exécutée** sur ce dump — honnête : le pipeline est celui prouvé le 2026-10-18 (§11.3), et les 5 migrations ajoutées depuis ont été validées fonctionnellement (§11.5, §11.8) |
+
+Écarts détectés vs dump précédent et traités :
+- **Supprimé** (résidu E2E du matin, haute confiance : anonyme, paiement
+  `pending`, produit de test) : commande `CMD-20261019-094214-FE3D61` +
+  ses 1 payment, 1 order_item, 1 order_status_history (CTE ciblé par
+  `order_number`, aucune autre ligne touchée ; 0 notification/0 delivery).
+- **`idempotency_keys` +5** : entrées hashées des tests API du jour —
+  laissées ( TTL d'usage, aucune PII).
+- **Détecté, à décision de l'utilisateur (PAS supprimé)** :
+  commande `CMD-20261019-190627-51FB9D` (anonyme, `pending_payment`,
+  32 000 F, livraison — possiblement un test iPhone passé après le fix
+  menu) et produit **« Gghhdd »** (créé 2026-10-19 09:13, actif, stock 44,
+  30 000 F) qui apparaît dans le catalogue public. Le dump les contient
+  donc aussi (live = dump, cohérent).
+
+Scripts utilisés (hors dépôt, `C:\Users\DJOGBENOU Jean\AppData\Local\Temp\opencode\`) :
+`sgquery.ps1` (token Management API lu via `CredRead`, jamais affiché),
+`export_schema.ps1`, `export_data.ps1` (manifeste régénéré automatiquement).
+
 ## 12. État final — 2026-10-19 (mise à jour de go-live)
 
 ### 12.1 Acquis (vérifiés)
@@ -710,11 +747,33 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
   panneau écrasé à 64 px). Panneau déplacé hors du header, vérifié en headless
   Chromium (panneau 844 px, 17/17 liens, fermetures X/Backdrop/Escape/lien OK,
   desktop inchangé). Déployé.
-- **5 migrations appliquées en production** (`supabase migration list --linked`
-  = 36/36 synchronisées) : recovery PII, vendor scope RPC, search_path
-  SECURITY DEFINER, nullable delivery pickup, messages RPC génériques.
+- **Migrations : 37/37 synchronisées** local ↔ distant (5 appliquées le
+  2026-10-18 : recovery PII, vendor scope RPC, search_path SECURITY
+  DEFINER, nullable delivery pickup, messages RPC génériques ; re-vérifié
+  le 19/10 via le manifeste de sauvegarde : aucun écart).
 - **Rate-limiting Upstash actif** en prod (fail-closed documenté, plus de
   fausses ruptures de quota 429).
+- **Audit sécurité complet (2026-10-19)** :
+  - en-têtes re-vérifiés après déploiement : CSP avec `frame-ancestors 'none'`,
+    HSTS 1 an `includeSubDomains`, `nosniff`, `X-Frame-Options: DENY`,
+    Referrer-Policy, Permissions-Policy, `poweredByHeader: false` ;
+    `/admin` → 307 vers `/login` (côté serveur) ; HTTP→HTTPS 308.
+  - guards API cartographiés : admin = `withAdminAuth` (+ rate-limit
+    `adminMutation` inclus), content-engine = `withContentAdminAuth`,
+    vendor = `requireVendorAuth`/`requireProductOwner`/`requireMediaOwner`,
+    cron = `CRON_SECRET`, webhooks = signature, publics = `general`.
+  - **dernier endpoint sans garde corrigé** : `GET /api/payment/methods`
+    → `withRateLimit(general)` (60 req/min). **Preuve en prod** : rafale
+    70 req en 9,8 s → **59×200 + 11×429** (`Trop de requêtes. Réessayez
+    dans 21s`), usage normal inchangé (200 + payload correct).
+  - `npm audit` : **0 CVE** ; open-redirect de `/login` assaini
+    (`sanitizeRedirect`) ; aucun PII dans les logs d'API.
+- **Pipeline de vérification du 2026-10-19** : typecheck ✓, lint ✓ (0
+  warning), tests **400/400** (28 suites), build ✓ (79 pages), healthcheck
+  200 sur `/`, `/checkout`, `/contact`, `/admin` (307 login),
+  `/api/payment/methods?country=BJ`.
+- **Sauvegarde logique rafraîchie** le 2026-10-19T20:52Z (310 lignes,
+  37/37 migrations, ancien dump archivé) — §11.9.
 - **Sauvegarde logique locale vérifiée** (`C:\dev\atemi-db-backups\`,
   restauration prouvée, §11).
 - **Code versionné** : commit `d7fa21c` poussé sur
@@ -734,21 +793,34 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
   dispatch, et ne throw jamais sans `BREVO_API_KEY` → sans clé email, le
   site commande et encaisse quand même (e-mail simplement non envoyé, logé).
   Les confirmations WhatsApp sont déjà configurées en production.
-- **`atemi.bj` est achetable** : whois `whois.nic.bj` (2026-10-19) renvoie
-  `No Object Found` → domaine non enregistré.
+- **Domaine : `atemistore.com` choisi, libre (RDAP Verisign), ATTACHÉ au
+  projet** (`vercel domains add atemistore.com atemi-preview` OK) — en
+  attente de l'achat sur open.bj. `atemi.bj` retiré de Vercel (non acheté) ;
+  `atemi.com` occupé par Squarespace (abandonné).
+- **Dernier déploiement** : `atemi-preview-5la681qx8-atemi.vercel.app`
+  (Production, 2026-10-19 soir) — durcissement `GET /api/payment/methods`
+  (voir ci-dessous).
 
 ### 12.2 Reste à faire pour le lancement réel (décision/action humaine)
 
 1. **Domaine définitif (bloquant #1 — sans lui, pas de lien durable)**
-   - `atemi.bj` : **NXDOMAIN** (aucun enregistrement DNS). À acheter auprès
-     d'un registrar `.bj` (ex. BENINIC/Cotonou Net ou registrar .bj agréé).
-   - `atemi.com` : résout vers **Squarespace** (site tiers). À récupérer ou
-     abandonner.
-   - Dès choix fait : attacher le domaine au projet Vercel
-     (`vercel domains add` ou dashboard), créer les enregistrements DNS
-     recommandés (A/ALIAS ou CNAME `www`), puis mettre à jour
-     `NEXT_PUBLIC_APP_URL` en Production et redéployer (domine sitemap,
-     robots, canonicals, OG et URLs de callback de paiement).
+   - **Choix acté : `atemistore.com`** (RDAP Verisign = libre ; `atemi.com`
+     Squarespace occupé et abandonné ; `atemi.bj` retiré de Vercel, non
+     acheté). Achat chez **open.bj** (registraire accrédité, ~9 000 FCFA/an,
+     Mobile Money/FCFA).
+   - **Déjà fait** : domaine **attaché au projet** Vercel
+     (`vercel domains add atemistore.com atemi-preview` → OK).
+   - **Reste (utilisateur)** : acheter sur open.bj, puis créer chez open.bj
+     les enregistrements recommandés par Vercel :
+     - `A` **@** → `76.76.21.21`
+     - `CNAME` **www** → `cname.vercel-dns.com`
+     (alternative : nameservers Vercel `ns1/ns2.vercel-dns.com` — à
+     privilégier seulement si MX/open.bj reste géré ailleurs ; A/CNAME
+     conservent les e-mails chez open.bj.)
+   - **Puis (automatisé dès confirmation « acheté »)** :
+     `vercel domains verify atemistore.com` → `NEXT_PUBLIC_APP_URL =
+     https://atemistore.com` (Production **et** Preview) → `vercel --prod`
+     → E2E (canonicals, sitemap, OG, callbacks paiement, santé).
 2. **E-mail transactionnel (bloquant #2 — confirmations de commande)**
    - Le site affiche encore le placeholder `votre@email.com` sur `/contact`.
    - Créer la boîte officielle (ex. `contact@…`), un compte Brevo (gratuit
@@ -772,11 +844,27 @@ planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvega
    avance sur `master` — ouvrir une PR pour tracer la fusion une fois le
    lancement stabilisé.
 
-### 12.3 Commandes prêtes (à exécuter dès que le domaine est choisi)
+### 12.3 Commandes prêtes (à exécuter dès que l'achat est confirmé)
 
 ```
-vercel domains add <domaine>          # attacher au projet atemi-preview
-vercel env add NEXT_PUBLIC_APP_URL production   # valeur: https://<domaine>
-vercel --prod                         # redéployer avec la bonne URL
+vercel domains verify atemistore.com          # après achat + DNS en place
+vercel env add NEXT_PUBLIC_APP_URL production  # valeur: https://atemistore.com
+vercel env add NEXT_PUBLIC_APP_URL preview     # idem pour Preview
+vercel --prod                                  # redeploy avec la bonne URL
 ```
+
+DNS attendu chez open.bj : `A @ → 76.76.21.21`, `CNAME www →
+cname.vercel-dns.com`. Vérifier ensuite : `curl -sI https://atemistore.com`
+(HSTS + 200), canonicals/sitemap/OG à domaine neuf, callbacks paiement.
+
+### 12.4 Données à trancher (décision utilisateur)
+
+- **`CMD-20261019-190627-51FB9D`** (anonyme, `pending_payment`, 32 000 F,
+  livraison) et produit **« Gghhdd »** (actif, visible au public) :
+  possiblement un test passé depuis l'iPhone de l'utilisateur après le fix
+  menu — **non supprimés** (peuvent être un vrai test à conserver ou une
+  commande à examiner dans Admin). Demander avant toute purge.
+- Catalogue contenant encore des produits de test anciens aux noms
+  aberrants (ex. `fregrfgrfgrfg`, `scscsxcscss`, `eefefe`) — purge
+  catalogue à ordonner par le propriétaire avant ouverture publique.
 
