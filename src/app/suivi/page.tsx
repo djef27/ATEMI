@@ -44,8 +44,6 @@ interface EmailLookupResult {
   deposit_amount: number;
   delivery_balance: number;
   currency: string;
-  customer_name: string;
-  customer_phone: string;
   delivery_city: string;
   created_at: string;
 }

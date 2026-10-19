@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { normalizeCity } from '@/lib/delivery-zones';
+import PhoneInput, { PhoneCountry, getFullPhoneNumber, AFRICAN_COUNTRIES } from '@/components/PhoneInput';
+import { getRegionsForCountry, getCitiesForRegion, Region, City } from '@/lib/regions';
 
 interface DeliveryZone {
   id: string;
@@ -47,11 +49,14 @@ export default function CheckoutPage() {
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry | null>(null);
   const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappCountry, setWhatsappCountry] = useState<PhoneCountry | null>(null);
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
   const [country, setCountry] = useState('BJ');
+  const [region, setRegion] = useState('');
+  const [city, setCity] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
@@ -59,6 +64,7 @@ export default function CheckoutPage() {
   const [deliveryZoneId, setDeliveryZoneId] = useState<string | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [availableCities, setAvailableCities] = useState<CityInfo[]>([]);
+  const [availableRegions, setAvailableRegions] = useState<Region[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
@@ -111,7 +117,19 @@ export default function CheckoutPage() {
   // Pre-fill form when auth profile loads (async)
   useEffect(() => {
     if (profile?.full_name && !fullName) setFullName(profile.full_name);
-    if (profile?.phone && !phone) setPhone(profile.phone);
+    if (profile?.phone && !phone) {
+      // Profile phone might be in international format (+229...) or national
+      const rawPhone = profile.phone;
+      let nationalPhone = rawPhone.replace(/^\+?\d{1,3}\s*/, '').replace(/\D/g, '');
+      setPhone(nationalPhone);
+      // Try to infer country from the phone prefix
+      const callingCodeMatch = rawPhone.match(/^\+?(\d{1,3})/);
+      if (callingCodeMatch) {
+        const callingCode = callingCodeMatch[1];
+        const inferredCountry = AFRICAN_COUNTRIES.find(c => c.callingCode === callingCode);
+        if (inferredCountry) setPhoneCountry(inferredCountry);
+      }
+    }
     if (user?.email && !email) setEmail(user.email);
   }, [profile, user, fullName, phone, email]);
 
@@ -119,23 +137,26 @@ export default function CheckoutPage() {
     (c) => normalizeCity(c.name) === normalizeCity(city)
   );
 
-  // Load the list of deliverable cities for the address autocomplete
+  // Load the list of regions for the selected country
   useEffect(() => {
-    const controller = new AbortController();
-    fetch(`/api/delivery-zones?cities=1&country=${encodeURIComponent(country)}`, { signal: controller.signal })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.data)) {
-          setAvailableCities(data.data);
-        } else {
-          setAvailableCities([]);
-        }
-      })
-      .catch(() => {
-        setAvailableCities([]);
-      });
-    return () => controller.abort();
+    const regions = getRegionsForCountry(country);
+    setAvailableRegions(regions);
+    setRegion(''); // Reset region when country changes
+    setCity(''); // Reset city when country changes
   }, [country]);
+
+  // Load the list of cities for the selected region
+  useEffect(() => {
+    if (!region) {
+      setAvailableCities([]);
+      setCity('');
+      return;
+    }
+    const cities = getCitiesForRegion(country, region);
+    const cityInfos: CityInfo[] = cities.map((c) => ({ name: c.name, min_fee: 0, zones_count: 0 }));
+    setAvailableCities(cityInfos);
+    setCity(''); // Reset city when region changes
+  }, [country, region]);
 
   // Auto-correct the city once fully typed (case / accents / spaces)
   useEffect(() => {
@@ -291,12 +312,14 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           customer_name: fullName.trim(),
-          customer_phone: phone.trim(),
+          customer_phone: phoneCountry ? getFullPhoneNumber(phone, phoneCountry) : phone.trim(),
           customer_email: email.trim() || null,
           delivery_address: address.trim() || null,
           delivery_city: city.trim() || null,
           items: items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
-          customer_whatsapp: whatsapp.trim() || null,
+          customer_whatsapp: whatsappCountry && whatsapp.trim()
+            ? getFullPhoneNumber(whatsapp, whatsappCountry)
+            : whatsapp.trim() || null,
           delivery_zone_id: deliveryZoneId || null,
           delivery_required: deliveryRequired,
           customer_notes: notes.trim() || null,
@@ -402,15 +425,32 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
-                  <input id="phone" name="tel" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-                    placeholder="+229 01 02 03 04" />
+                  <PhoneInput
+                    id="phone"
+                    name="tel"
+                    label="Téléphone *"
+                    value={phone}
+                    onChange={(val, c) => { setPhone(val); setPhoneCountry(c); }}
+                    country={phoneCountry?.code}
+                    onCountryChange={setPhoneCountry}
+                    required
+                    autoComplete="tel"
+                    placeholder={undefined}
+                  />
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                  <input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-                    placeholder="Optionnel — pour suivre votre commande via WhatsApp" />
+                  <PhoneInput
+                    id="whatsapp"
+                    name="whatsapp"
+                    label="WhatsApp"
+                    value={whatsapp}
+                    onChange={(val, c) => { setWhatsapp(val); setWhatsappCountry(c); }}
+                    country={whatsappCountry?.code}
+                    onCountryChange={setWhatsappCountry}
+                    autoComplete="tel"
+                    placeholder="Optionnel — pour suivre votre commande via WhatsApp"
+                  />
                 </div>
               </div>
             </div>
@@ -462,15 +502,24 @@ export default function CheckoutPage() {
               {deliveryRequired && (
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-                    <input id="city" name="address-level2" type="text" autoComplete="address-level2" required list="delivery-cities" value={city} onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-                      placeholder="Choisissez votre ville…" />
-                    <datalist id="delivery-cities">
-                      {availableCities.map((c) => (
-                        <option key={c.name} value={c.name} />
+                    <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">Région / Département *</label>
+                    <select id="region" name="region" autoComplete="address-level2" required value={region} onChange={(e) => setRegion(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
+                      <option value="">Sélectionnez une région</option>
+                      {availableRegions.map((r) => (
+                        <option key={r.code} value={r.code}>{r.name}</option>
                       ))}
-                    </datalist>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                    <select id="city" name="address-level2" autoComplete="address-level2" required value={city} onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
+                      <option value="">Sélectionnez une ville</option>
+                      {availableCities.map((c) => (
+                        <option key={c.name} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
                     {knownCity && deliveryZones.length > 0 && (
                       <p role="status" aria-live="polite" className="mt-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-2.5">
                         Livraison disponible à {knownCity.name} — à partir de {formatPrice(knownCity.min_fee)} selon la zone.

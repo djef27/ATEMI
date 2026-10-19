@@ -9,6 +9,12 @@ import { createCinetPayPayment } from '@/lib/payment/providers/cinetpay';
 import { getPaymentMethods } from '@/lib/payment/countries';
 import { isOrderStatusTerminal } from '@/lib/order-status';
 import { getClientIp } from '@/lib/request';
+import {
+  checkIdempotencyKey,
+  generateRequestHash,
+  getIdempotencyKey,
+  storeIdempotencyResponse,
+} from '@/lib/idempotency';
 import type { OrderStatus } from '@/types';
 
 /**
@@ -68,6 +74,38 @@ export async function POST(request: NextRequest) {
       }
     }
     const supabase = createAdminSupabaseClient();
+
+    // Two concurrent initiates (double-click / flaky network) would both read
+    // the same unpaid payments row and could each create a provider
+    // transaction. The key falls back to a deterministic method+URL+body-hash
+    // so a retry without an Idempotency-Key header is still deduplicated.
+    const idempotencyKey = getIdempotencyKey(request, 'pay:initiate', parsed.data);
+    const idempotencyResult = await checkIdempotencyKey(
+      idempotencyKey,
+      {
+        requesterType: 'customer',
+        requesterId: order_number.trim(),
+        requestMethod: 'POST',
+        requestPath: '/api/payment/initiate',
+      },
+      generateRequestHash(parsed.data)
+    );
+
+    if (idempotencyResult.error === 'IDEMPOTENCY_KEY_CONFLICT') {
+      return NextResponse.json(
+        { success: false, error: 'Requete invalide' },
+        { status: 409 }
+      );
+    }
+    if (idempotencyResult.error) {
+      // Never block a payment on an idempotency-store outage: the state machine
+      // below (reused payment_url / transaction_reference) stays the fallback.
+      console.error('[PAYMENT_INITIATE_IDEMPOTENCY_ERROR]', idempotencyResult.error);
+    } else if (!idempotencyResult.isNew && idempotencyResult.existingResponse) {
+      return NextResponse.json(idempotencyResult.existingResponse);
+    }
+    // A replay without a stored response means a previous attempt failed before
+    // completion: fall through so the customer can legitimately retry.
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -314,6 +352,10 @@ export async function POST(request: NextRequest) {
           orderNumber: order.order_number,
           transactionReference: result.transactionId,
         });
+        await storeIdempotencyResponse(idempotencyKey, 200, {
+          success: true,
+          payment_url: result.paymentUrl,
+        });
         return NextResponse.json({ success: true, payment_url: result.paymentUrl });
       } catch (error) {
         console.error('[PAYMENT_CREATION_FAILED]', {
@@ -417,6 +459,11 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       return NextResponse.json({ success: false, error: "Erreur lors de l'enregistrement du paiement" }, { status: 500 });
     }
+
+    await storeIdempotencyResponse(idempotencyKey, 200, {
+      success: true,
+      payment_url: transaction.payment_url,
+    });
 
     return NextResponse.json({ success: true, payment_url: transaction.payment_url });
   } catch {

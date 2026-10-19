@@ -296,3 +296,36 @@
 2. Tester le parcours complet dans le navigateur
 3. Ajouter des tests
 4. Optimisation UX et performance
+
+---
+
+## Correction du 2026-10-18 — mesures directes sur les catalogues distants
+
+Les constats des sessions antérieures de ce fichier (lignes ~16, ~22, ~35-36)
+affirmaient que `get_order_by_email(text,text)` « reste exécutable par `anon` et
+`authenticated` ». **C'est faux à la date du 2026-10-18.** Sondage direct des
+catalogues **distants** (Management API, lecture seule) :
+
+| Rôle | `get_order_by_email` | `create_order` | `order_has_vendor_items` | `get_order_receipt` | `get_order_tracking` | `get_my_vendor_id` | `confirm_deposit_payment` |
+|---|---|---|---|---|---|---|---|
+| `anon` | **false** | false | false | true | true | false | false |
+| `authenticated` | **false** | false | true | true | true | true | false |
+| `service_role` | true | true | true | true | true | true | true |
+
+Lignes de conduite retenues :
+
+- Le REVOKE de `20261011120000` **est en vigueur** ; le RPC direct depuis le
+  navigateur est impossible, la récupération passe par `POST /api/order/recovery`.
+- **0** fonction `SECURITY DEFINER` de `public` est sans `SET search_path`
+  (25 au total) → l'affirmation d'un dump « 16 fonctions sans `search_path` »
+  n'est pas confirmée par les catalogues.
+- `get_order_receipt` / `get_order_tracking` restent volontairement `anon=true`
+  (le suivi public repose sur l'entropie du `tracking_token`) mais propageaient
+  `sqlerrm` → corrigé par `20261018140000` (non appliquée à distance).
+
+Reste **non appliqué à distance** (aucun canal d'écriture : Docker cassé,
+SQL distant `read_only=on`) : `20261011120000` (privileges appliqués hors
+registre mais non inscrits), `20261013100000`, `20261017120000` (réécrite),
+`20261018130000`, `20261018140000`. Les 5 ont été **testées avec succès sur une
+base locale restaurée à partir de la sauvegarde gratuite** avant toute
+application. Voir `docs/PRODUCTION_READINESS.md` §11.

@@ -69,9 +69,12 @@ export default function VendorCommandesPage() {
       return;
     }
 
+    // Explicit column list: a vendor must never receive customer_email,
+    // customer_notes, customer_whatsapp, tracking_token or vendor_id for an
+    // order they only partly own (multi-vendor baskets).
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id, order_number, status, customer_name, created_at')
       .in('id', orderIds)
       .order('created_at', { ascending: false });
 

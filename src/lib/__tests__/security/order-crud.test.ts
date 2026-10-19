@@ -133,9 +133,27 @@ describe('Vendor orders [id] route', () => {
   });
 
   it('enforces cross-vendor protection', () => {
-    expect(route).toContain('order.vendor_id !== auth.vendorId');
+    // Ownership must mirror the "orders_vendor_read" RLS predicate: a vendor
+    // owns an order when orders.vendor_id matches OR when at least one
+    // order_items row is theirs (orders.vendor_id is NULL for multi-vendor
+    // baskets, so testing it alone would also reject legitimate vendors).
+    expect(route).toContain("'order_has_vendor_items'");
+    expect(route).toContain('p_order_id: id');
+    expect(route).toContain('p_vendor_id: auth.vendorId');
     expect(route).toContain('Accès refusé');
     expect(route).toContain('status: 403');
+    expect(route).toContain('ownsItems !== true');
+  });
+
+  it('bypasses the ownership check only for admins', () => {
+    expect(route).toContain('if (!auth.isAdmin) {');
+    expect(route).toContain('if (!auth.isAdmin && !auth.vendorId)');
+  });
+
+  it('does not select PII it never returns', () => {
+    expect(route).not.toContain('customer_email');
+    expect(route).not.toContain('customer_name');
+    expect(route).not.toContain('tracking_token');
   });
 
   it('uses requireVendorAuth and origin check', () => {
@@ -244,5 +262,58 @@ describe('UI integration', () => {
     );
     expect(component).toContain('method: \'PATCH\'');
     expect(component).toContain('useToast');
+  });
+});
+
+describe('Duplicate order / payment protection', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const read = (p: string) =>
+    fs.readFileSync(path.join(process.cwd(), p), 'utf-8');
+
+  it('always derives an idempotency key on order creation', () => {
+    const route = read('src/app/api/orders/route.ts');
+    // The key must be derived even when the client sends no header, otherwise
+    // a script or third-party page bypasses deduplication entirely.
+    expect(route).toContain("getIdempotencyKey(request, 'order:create', data)");
+    expect(route).not.toContain("request.headers.get('idempotency-key')");
+  });
+
+  it('blocks the replay race when a prior attempt stored no response', () => {
+    const route = read('src/app/api/orders/route.ts');
+    expect(route).toContain('if (!idempotencyResult.isNew) {');
+    expect(route).toContain('déjà en cours de traitement');
+    expect(route).toContain('status: 409');
+  });
+
+  it('stores the idempotency response before the confirmation email', () => {
+    const route = read('src/app/api/orders/route.ts');
+    const store = route.indexOf('storeIdempotencyResponse(idempotencyKey');
+    const email = route.indexOf('sendEmail({');
+    expect(store).toBeGreaterThan(-1);
+    expect(email).toBeGreaterThan(-1);
+    expect(store).toBeLessThan(email);
+  });
+
+  it('deduplicates payment initiation', () => {
+    const route = read('src/app/api/payment/initiate/route.ts');
+    expect(route).toContain("getIdempotencyKey(request, 'pay:initiate', parsed.data)");
+    expect(route).toContain('checkIdempotencyKey');
+    expect(route).toContain('storeIdempotencyResponse(idempotencyKey');
+  });
+
+  it('never lets a vendor page select every order column', () => {
+    const page = read('src/app/vendor/commandes/page.tsx');
+    const selectClause = page.match(/\.from\('orders'\)\s*\.select\(([^)]*)\)/)?.[1] ?? '';
+    expect(selectClause).not.toContain('*');
+    expect(selectClause).not.toContain('tracking_token');
+    expect(selectClause).not.toContain('customer_email');
+    expect(selectClause).not.toContain('customer_notes');
+    expect(selectClause).not.toContain('customer_whatsapp');
+    expect(selectClause).not.toContain('vendor_id');
+    // Only what the page actually renders.
+    for (const column of ['id', 'order_number', 'status', 'customer_name', 'created_at']) {
+      expect(selectClause).toContain(column);
+    }
   });
 });

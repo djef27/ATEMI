@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PhoneInput, { PhoneCountry, AFRICAN_COUNTRIES } from '@/components/PhoneInput';
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(AFRICAN_COUNTRIES[0]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -144,14 +146,15 @@ export default function RegisterPage() {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Téléphone
               </label>
-              <input
+              <PhoneInput
                 id="phone"
-                type="tel"
-                required
+                label="Téléphone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-primary-200 text-gray-900 placeholder-gray-400 focus-visible:outline-none                 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent transition-colors"
-                placeholder="+229 01 02 03 04"
+                onChange={(val, c) => { setPhone(val); setPhoneCountry(c); }}
+                country={phoneCountry?.code}
+                onCountryChange={setPhoneCountry}
+                required
+                placeholder={undefined}
               />
             </div>
 

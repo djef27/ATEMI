@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { useCart } from '@/hooks/use-cart';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, User, Menu, X, LogOut, ChevronDown, Package, FileText, ChevronRight, Search } from 'lucide-react';
 import type { HomeCategory } from '@/lib/supabase/queries';
@@ -26,6 +26,45 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
   const [searchQuery, setSearchQuery] = useState('');
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Lock body scroll when mobile menu is open (html + body: iOS Safari
+  // does not reliably honor overflow:hidden on body alone)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    // Prevent scroll jump by preserving scroll position
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [menuOpen]);
+
+  // Close the mobile menu on Escape and when the viewport crosses to desktop
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    const desktopQuery = window.matchMedia('(min-width: 1024px)');
+    const onViewportChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    desktopQuery.addEventListener('change', onViewportChange);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      desktopQuery.removeEventListener('change', onViewportChange);
+    };
+  }, [menuOpen]);
+
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -41,7 +80,8 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#1A1919]/95 backdrop-blur-sm">
+    <>
+    <header className="sticky top-0 z-50 bg-[#1A1919]/95 backdrop-blur-sm" suppressHydrationWarning>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo - fixed width */}
@@ -265,8 +305,9 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
 
             {/* Mobile hamburger */}
             <button
+              type="button"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+              className="lg:hidden p-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 touch-manipulation"
               aria-label="Menu"
               aria-expanded={menuOpen}
             >
@@ -274,84 +315,6 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
             </button>
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div className="lg:hidden border-t border-white/10 py-4 space-y-1">
-            <Link
-              href="/"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
-            >
-              Accueil
-            </Link>
-
-            {/* Mobile categories */}
-            <div className="px-4 py-2">
-              <p className="text-xs font-medium tracking-wider uppercase text-gray-500 mb-2">Boutique</p>
-              <Link
-                href="/products"
-                onClick={() => setMenuOpen(false)}
-                className="block py-2 text-sm text-gray-300 hover:text-white"
-              >
-                Tous les produits
-              </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/products?category=${cat.slug}`}
-                  onClick={() => setMenuOpen(false)}
-                  className="block py-2 text-sm text-gray-300 hover:text-white"
-                >
-                  {cat.name}
-                </Link>
-              ))}
-            </div>
-
-            <Link
-              href="/products?sort=new"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
-            >
-              Nouveautés
-            </Link>
-            <Link
-              href="/products?sort=best"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
-            >
-              Meilleures ventes
-            </Link>
-            <Link
-              href="/comment-ca-marche"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg"
-            >
-              Comment ça marche
-            </Link>
-
-            <div className="border-t border-white/10 mt-2 pt-2 px-4 space-y-2">
-              {!user && (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setMenuOpen(false)}
-                    className="block w-full text-center px-4 py-3 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10"
-                  >
-                    Connexion
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setMenuOpen(false)}
-                    className="block w-full text-center px-4 py-3 text-sm font-medium text-[#1A1919] bg-white rounded-lg hover:bg-gray-100"
-                  >
-                    Inscription
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Mobile search overlay */}
         {searchOpen && (
@@ -385,5 +348,122 @@ export default function HeaderInner({ categories, pathname = '/' }: HeaderInnerP
         )}
       </div>
     </header>
+
+    {/* Mobile menu — rendered OUTSIDE <header> on purpose:
+        backdrop-filter on the header creates a containing block for
+        position:fixed descendants, which collapsed the panel to the
+        header height on mobile (only the "Menu" bar was visible). */}
+    {menuOpen && (
+      <>
+        {/* Backdrop - blocks scroll on background */}
+        <div
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+        {/* Mobile menu panel - fixed to the viewport, scrollable, safe-area aware */}
+        <div
+          data-testid="mobile-menu-panel"
+          className="fixed inset-y-0 right-0 z-[60] lg:hidden w-full max-w-sm bg-[#1A1919] border-l border-white/10 flex flex-col"
+        >
+          {/* Sticky header with close button */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 sticky top-0 bg-[#1A1919] z-10">
+            <h2 className="text-sm font-semibold text-white">Menu</h2>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 touch-manipulation"
+              aria-label="Fermer le menu"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Scrollable links - min-h-0 lets flex-1 shrink so overflow-y-auto scrolls */}
+          <nav
+            data-testid="mobile-menu-nav"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-4 space-y-1 pb-safe"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <Link
+              href="/"
+              onClick={() => setMenuOpen(false)}
+              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg mx-3"
+            >
+              Accueil
+            </Link>
+
+            {/* Mobile categories */}
+            <div className="px-4 py-2">
+              <p className="text-xs font-medium tracking-wider uppercase text-gray-500 mb-2">Boutique</p>
+              <Link
+                href="/products"
+                onClick={() => setMenuOpen(false)}
+                className="block py-2 text-sm text-gray-300 hover:text-white"
+              >
+                Tous les produits
+              </Link>
+              {categories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/products?category=${cat.slug}`}
+                  onClick={() => setMenuOpen(false)}
+                  className="block py-2 text-sm text-gray-300 hover:text-white"
+                >
+                  {cat.name}
+                </Link>
+              ))}
+            </div>
+
+            <Link
+              href="/products?sort=new"
+              onClick={() => setMenuOpen(false)}
+              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg mx-3"
+            >
+              Nouveautés
+            </Link>
+            <Link
+              href="/products?sort=best"
+              onClick={() => setMenuOpen(false)}
+              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg mx-3"
+            >
+              Meilleures ventes
+            </Link>
+            <Link
+              href="/comment-ca-marche"
+              onClick={() => setMenuOpen(false)}
+              className="block px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-lg mx-3"
+            >
+              Comment ça marche
+            </Link>
+
+            <div className="border-t border-white/10 mt-2 pt-2 px-4 space-y-2">
+              {!user && (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="block w-full text-center px-4 py-3 text-sm font-medium text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 mx-3"
+                  >
+                    Connexion
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMenuOpen(false)}
+                    className="block w-full text-center px-4 py-3 text-sm font-medium text-[#1A1A19] bg-white rounded-lg hover:bg-gray-100 mx-3"
+                  >
+                    Inscription
+                  </Link>
+                </>
+              )}
+            </div>
+          </nav>
+
+          {/* Safe area bottom padding for iOS home indicator */}
+          <div className="pb-safe h-4" aria-hidden="true" />
+        </div>
+      </>
+    )}
+    </>
   );
 }

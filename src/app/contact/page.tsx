@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, Loader2, CheckCircle } from 'lucide-react';
+import { getContactConfig } from '@/lib/site-config';
 
 export default function ContactPage() {
+  const contact = getContactConfig();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -55,7 +57,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-[#1A1919] text-sm">Téléphone</h3>
-                <a href="tel:+22901020304" className="text-sm text-gray-600 hover:text-primary-700">+229 01 02 03 04</a>
+                <a href={`tel:${contact.phoneDisplay.replace(/\s/g, '')}`} className="text-sm text-gray-600 hover:text-primary-700">{contact.phoneDisplay}</a>
               </div>
             </div>
 
@@ -65,7 +67,11 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-[#1A1919] text-sm">Email</h3>
-                <a href="mailto:contact@atemi.bj" className="text-sm text-gray-600 hover:text-primary-700">contact@atemi.bj</a>
+                {contact.email ? (
+                    <a href={`mailto:${contact.email}`} className="text-sm text-gray-600 hover:text-primary-700">{contact.email}</a>
+                  ) : (
+                    <p className="text-sm text-gray-500">Non configuré pour le moment</p>
+                  )}
               </div>
             </div>
 
@@ -75,7 +81,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-[#1A1919] text-sm">Adresse</h3>
-                <p className="text-sm text-gray-600">Cotonou, Bénin</p>
+                <p className="text-sm text-gray-600">{contact.city}, {contact.country}</p>
               </div>
             </div>
           </div>

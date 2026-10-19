@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getContactConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Politique de Confidentialité',
@@ -6,6 +7,8 @@ export const metadata: Metadata = {
 };
 
 export default function PolitiqueConfidentialitePage() {
+  const contact = getContactConfig();
+
   return (
     <main className="min-h-screen bg-[#FAFAF8]">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
@@ -80,7 +83,7 @@ export default function PolitiqueConfidentialitePage() {
               <li><strong>Droit d&apos;opposition</strong> : vous opposer au traitement de vos données</li>
             </ul>
             <p>
-              Pour exercer ces droits, contactez-nous à l&apos;adresse : contact@atemi.bj
+              Pour exercer ces droits, contactez-nous à l&apos;adresse : {contact.email || 'non configuré'}
             </p>
           </section>
 
@@ -98,9 +101,9 @@ export default function PolitiqueConfidentialitePage() {
               Pour toute question relative à cette politique de confidentialité, contactez-nous :
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Email : contact@atemi.bj</li>
-              <li>Téléphone : +229 01 02 03 04</li>
-              <li>Adresse : Cotonou, Bénin</li>
+              <li>Email : {contact.email || 'non configuré'}</li>
+              <li>Téléphone : {contact.phoneDisplay}</li>
+              <li>Adresse : {contact.city}, {contact.country}</li>
             </ul>
           </section>
 

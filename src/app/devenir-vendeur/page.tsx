@@ -4,12 +4,15 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Store, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import PhoneInput, { PhoneCountry, AFRICAN_COUNTRIES } from '@/components/PhoneInput';
 
 export default function VendorRegistrationPage() {
   const [form, setForm] = useState({
     name: '',
     phone: '',
+    phoneCountry: AFRICAN_COUNTRIES[0],
     whatsapp_number: '',
+    whatsappCountry: AFRICAN_COUNTRIES[0],
     email: '',
     city: 'Cotonou',
     description: '',
@@ -31,8 +34,8 @@ export default function VendorRegistrationPage() {
         .from('vendors')
         .insert({
           name: form.name.trim(),
-          phone: form.phone.trim() || null,
-          whatsapp_number: form.whatsapp_number.trim() || null,
+          phone: form.phoneCountry ? `+${form.phoneCountry.callingCode} ${form.phone.trim()}` : form.phone.trim() || null,
+          whatsapp_number: form.whatsappCountry ? `+${form.whatsappCountry.callingCode} ${form.whatsapp_number.trim()}` : form.whatsapp_number.trim() || null,
           email: form.email.trim() || null,
           city: form.city.trim(),
           country: 'BJ',
@@ -51,7 +54,7 @@ export default function VendorRegistrationPage() {
     }
   };
 
-  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+  const update = (field: string, value: string | PhoneCountry) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
     <main className="min-h-screen bg-[#FAFAF8]">
@@ -102,15 +105,27 @@ export default function VendorRegistrationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                    <input id="phone" type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-                      placeholder="+229 01 02 03 04" />
+                    <PhoneInput
+                      id="phone"
+                      label="Téléphone"
+                      value={form.phone}
+                      onChange={(val, c) => { update('phone', val); update('phoneCountry', c); }}
+                      country={form.phoneCountry?.code}
+                      onCountryChange={(c) => update('phoneCountry', c)}
+                      placeholder={undefined}
+                    />
                   </div>
                   <div>
                     <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                    <input id="whatsapp" type="tel" value={form.whatsapp_number} onChange={(e) => update('whatsapp_number', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-primary-200 text-[#1A1919] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-                      placeholder="+229 01 02 03 04" />
+                    <PhoneInput
+                      id="whatsapp"
+                      label="WhatsApp"
+                      value={form.whatsapp_number}
+                      onChange={(val, c) => { update('whatsapp_number', val); update('whatsappCountry', c); }}
+                      country={form.whatsappCountry?.code}
+                      onCountryChange={(c) => update('whatsappCountry', c)}
+                      placeholder={undefined}
+                    />
                   </div>
                 </div>
 

@@ -50,7 +50,7 @@ export async function PATCH(
 
     const { data: order, error: fetchError } = await auth.supabase
       .from('orders')
-      .select('id, order_number, status, vendor_id, tracking_token, customer_email, customer_name')
+      .select('id, order_number, status, vendor_id')
       .eq('id', id)
       .single();
 
@@ -58,8 +58,24 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Commande introuvable' }, { status: 404 });
     }
 
-    if (!auth.isAdmin && order.vendor_id !== auth.vendorId) {
+    if (!auth.isAdmin && !auth.vendorId) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 });
+    }
+
+    // Mirrors the "orders_vendor_read" RLS predicate: a vendor may act on an
+    // order either when it is single-vendor (orders.vendor_id) or when at least
+    // one order_items row belongs to them. orders.vendor_id is NULL for
+    // multi-vendor baskets, so testing it alone would wrongly reject a
+    // legitimate vendor. The RPC runs through the service-role client (which is
+    // granted EXECUTE) and therefore never bypasses the ownership rule.
+    if (!auth.isAdmin) {
+      const { data: ownsItems, error: ownershipError } = await auth.supabase.rpc(
+        'order_has_vendor_items',
+        { p_order_id: id, p_vendor_id: auth.vendorId }
+      );
+      if (ownershipError || ownsItems !== true) {
+        return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 });
+      }
     }
 
     const oldStatus = order.status as OrderStatus;

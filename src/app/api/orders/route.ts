@@ -10,6 +10,7 @@ import { getOrderCreationError } from '@/lib/order-errors';
 import {
   checkIdempotencyKey,
   generateRequestHash,
+  getIdempotencyKey,
   storeIdempotencyResponse,
   type IdempotencyContext,
 } from '@/lib/idempotency';
@@ -156,37 +157,50 @@ export async function POST(request: NextRequest) {
     const authSupabase = await createServerSupabaseClient();
     const { data: { user } } = await authSupabase.auth.getUser();
 
-    // 4b. Idempotency check — prevent duplicate orders from double-submit
-    const idempotencyKey = request.headers.get('idempotency-key');
-    if (idempotencyKey) {
-      const idempotencyContext: IdempotencyContext = {
-        requesterType: 'customer',
-        requesterId: user?.id || 'guest',
-        requestMethod: 'POST',
-        requestPath: '/api/orders',
-      };
-      const idempotencyResult = await checkIdempotencyKey(
-        idempotencyKey,
-        idempotencyContext,
-        generateRequestHash(data)
-      );
+    // 4b. Idempotency check — prevent duplicate orders from double-submit.
+    // Always active: the key falls back to a deterministic method+URL+body-hash
+    // when the client does not send an Idempotency-Key header, so a script or a
+    // third-party page cannot bypass the deduplication.
+    const idempotencyKey = getIdempotencyKey(request, 'order:create', data);
+    const idempotencyContext: IdempotencyContext = {
+      requesterType: 'customer',
+      requesterId: user?.id || 'guest',
+      requestMethod: 'POST',
+      requestPath: '/api/orders',
+    };
+    const idempotencyResult = await checkIdempotencyKey(
+      idempotencyKey,
+      idempotencyContext,
+      generateRequestHash(data)
+    );
 
-      if (idempotencyResult.error === 'IDEMPOTENCY_KEY_CONFLICT') {
-        return NextResponse.json(
-          { success: false, error: 'Clé d\'idempotence réutilisée avec des données différentes' },
-          { status: 409 }
-        );
-      }
-      if (idempotencyResult.error) {
-        console.error('[ORDER_IDEMPOTENCY_ERROR]', idempotencyResult.error);
-        return NextResponse.json(
-          { success: false, error: 'Erreur de vérification de la commande' },
-          { status: 500 }
-        );
-      }
-      if (!idempotencyResult.isNew && idempotencyResult.existingResponse) {
+    if (idempotencyResult.error === 'IDEMPOTENCY_KEY_CONFLICT') {
+      return NextResponse.json(
+        { success: false, error: 'Clé d\'idempotence réutilisée avec des données différentes' },
+        { status: 409 }
+      );
+    }
+    if (idempotencyResult.error) {
+      console.error('[ORDER_IDEMPOTENCY_ERROR]', idempotencyResult.error);
+      return NextResponse.json(
+        { success: false, error: 'Erreur de vérification de la commande' },
+        { status: 500 }
+      );
+    }
+    if (!idempotencyResult.isNew) {
+      // The key row is inserted by the RPC at check time, so a replay that has
+      // no stored response means a previous attempt created the order but failed
+      // to persist its response. Falling through would create a SECOND order.
+      if (idempotencyResult.existingResponse) {
         return NextResponse.json(idempotencyResult.existingResponse);
       }
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Une commande identique est déjà en cours de traitement, réessayez dans quelques secondes',
+        },
+        { status: 409 }
+      );
     }
 
     // 5. Call server-side RPC via admin client
@@ -217,7 +231,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Send confirmation email (fire-and-forget)
+    // 6. Persist the idempotency response BEFORE the confirmation email: the
+    //    email is fire-and-forget and must not delay the replay path. A failed
+    //    store is logged but never turns a successful order into an error
+    //    response (the 409 replay guard above already blocks the retry).
+    await storeIdempotencyResponse(idempotencyKey, 200, { success: true, data: rpcData });
+
+    // 7. Send confirmation email (fire-and-forget)
     if (data.customer_email && rpcData && typeof rpcData === 'object' && 'order_number' in rpcData) {
       const orderData = rpcData as {
         order_id: string;
@@ -256,11 +276,6 @@ export async function POST(request: NextRequest) {
         trackingToken: orderData.tracking_token,
       });
       sendEmail({ to: data.customer_email, ...emailPayload }).catch(() => {});
-    }
-
-    // 7. Store idempotency key for future duplicate prevention
-    if (idempotencyKey) {
-      await storeIdempotencyResponse(idempotencyKey, 200, { success: true, data: rpcData });
     }
 
     // 8. Return success

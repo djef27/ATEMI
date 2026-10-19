@@ -6,6 +6,7 @@ import { Users, Loader2, Plus, X, Pencil, Trash2, Eye, Check, Ban } from 'lucide
 import { useToast } from '@/components/toast-provider';
 import type { Vendor } from '@/types';
 import type { VendorCreateInput } from '@/lib/validations';
+import PhoneInput, { PhoneCountry, AFRICAN_COUNTRIES } from '@/components/PhoneInput';
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   active: { label: 'Actif', color: 'bg-green-100 text-green-700' },
@@ -14,10 +15,12 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700' },
 };
 
-const emptyForm: VendorCreateInput = {
+const emptyForm: VendorCreateInput & { phoneCountry?: PhoneCountry; whatsappCountry?: PhoneCountry } = {
   name: '',
   phone: null,
+  phoneCountry: AFRICAN_COUNTRIES[0],
   whatsapp_number: null,
+  whatsappCountry: AFRICAN_COUNTRIES[0],
   email: null,
   address: null,
   city: 'Cotonou',
@@ -36,6 +39,8 @@ export default function AdminVendeursPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<VendorCreateInput>(emptyForm);
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(AFRICAN_COUNTRIES[0]);
+  const [whatsappCountry, setWhatsappCountry] = useState<PhoneCountry>(AFRICAN_COUNTRIES[0]);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -43,10 +48,10 @@ export default function AdminVendeursPage() {
   // Edit state
   const [editVendor, setEditVendor] = useState<VendorWithStats | null>(null);
   const [editForm, setEditForm] = useState<Partial<VendorCreateInput>>({});
+  const [editPhoneCountry, setEditPhoneCountry] = useState<PhoneCountry>(AFRICAN_COUNTRIES[0]);
+  const [editWhatsappCountry, setEditWhatsappCountry] = useState<PhoneCountry>(AFRICAN_COUNTRIES[0]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-
-  // Delete state
   const [deleteVendor, setDeleteVendor] = useState<VendorWithStats | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -363,16 +368,27 @@ export default function AdminVendeursPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                  <input type="tel" value={form.phone || ''}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent"
-                    placeholder="+229 01 02 03 04" />
+                  <PhoneInput
+                    id="phone"
+                    label="Téléphone"
+                    value={form.phone || ''}
+                    onChange={(val, c) => { setForm({ ...form, phone: val || null }); setPhoneCountry(c); }}
+                    country={phoneCountry.code}
+                    onCountryChange={setPhoneCountry}
+                    placeholder={undefined}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                  <input type="tel" value={form.whatsapp_number || ''}
-                    onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value || null })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent" />
+                  <PhoneInput
+                    id="whatsapp"
+                    label="WhatsApp"
+                    value={form.whatsapp_number || ''}
+                    onChange={(val, c) => { setForm({ ...form, whatsapp_number: val || null }); setWhatsappCountry(c); }}
+                    country={whatsappCountry.code}
+                    onCountryChange={setWhatsappCountry}
+                    placeholder={undefined}
+                  />
                 </div>
               </div>
 

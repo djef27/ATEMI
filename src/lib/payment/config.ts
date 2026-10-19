@@ -66,7 +66,14 @@ export function getPaymentConfig(): PaymentConfig {
 
   // In production, all secrets are required for real providers
   if (isProduction && !isMock) {
-    if (provider === 'kkiapay' && sandbox && process.env.VERCEL_ENV !== 'preview') {
+    const sandboxProductionAllowed =
+      process.env.KKIAPAY_ALLOW_SANDBOX_PRODUCTION?.trim().toLowerCase() === 'true';
+    if (
+      provider === 'kkiapay' &&
+      sandbox &&
+      !sandboxProductionAllowed &&
+      process.env.VERCEL_ENV !== 'preview'
+    ) {
       throw new Error(
         '[PAYMENT CONFIG] Les clés KKiaPay Sandbox ne peuvent pas être utilisées en production. ' +
         'Configurez les clés Live et définissez KKIAPAY_SANDBOX=false.'

@@ -212,18 +212,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             />
             </div>
 
-            <ProductGallery images={images} productName={productName} />
-
-            {video && (
-              <div className="bg-white rounded-2xl border border-primary-100 shadow-sm overflow-hidden">
-                <video
-                  src={video.image_url}
-                  controls
-                  className="w-full"
-                  preload="metadata"
-                />
-              </div>
-            )}
+            <ProductGallery images={images} videos={video ? [{ image_url: video.image_url, alt_text: video.alt_text }] : []} productName={productName} />
           </div>
 
           <div className="flex flex-col">

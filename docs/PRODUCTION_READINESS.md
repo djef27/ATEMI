@@ -203,19 +203,24 @@ lint complet s'exécute aussi pendant `next build`.
   → **aucune sauvegarde restaurable**. Aucune procédure de restauration vérifiée.
   Ni mot de passe rôle PostgreSQL ni URI directe disponibles localement → pas de
   `pg_dump` possible ; le PITR est une option **payante** (Plan Pro).
-- Sécurité `SECURITY DEFINER` (constaté 2026-10-17) : le dump distant
-  (`remote_schema_backup.sql`) contient **16 fonctions `SECURITY DEFINER` sans
-  `SET search_path`** — `confirm_deposit_payment`, `create_delivery_when_ready`,
-  `create_order`, `get_admin_order_summary`, `get_my_role`, `get_my_vendor_id`,
-  `get_order_receipt`, `get_order_tracking`, `is_admin`, `is_driver`, `is_vendor`,
-  `prepare_admin_order_notification`, `prepare_order_notifications`,
-  `prepare_vendor_order_notification`, `trigger_order_notifications`,
-  `update_delivery_status`. Sans `search_path` fixé, ces fonctions résolvent les
-  objets dans le `search_path` de l'appelant → risque d'usurpation de schéma.
-  **Correction prête** : `20261017120000_harden_security_definer_search_path.sql`
-  (idempotente, non destructive, ajoutant `SET search_path = pg_catalog, public`),
-  commitée `3709954`. **Décision utilisateur : activer d'abord une sauvegarde/PITR**
-  → migration **non appliquée à distance**.
+- Sécurité `SECURITY DEFINER` — **mesurée directement sur les catalogues distants
+  le 2026-10-18** (requête `pg_proc`/`pg_namespace`, lecture seule) : **25 fonctions
+  `SECURITY DEFINER` dans `public`, dont 0 sans `SET search_path`**.
+  - L'assertion antérieure (§ rédigé le 2026-10-17) de « **16 fonctions sans
+    `SET search_path`** », déduite d'un dump texte (`remote_schema_backup.sql`),
+    est **contredite par la mesure** et n'est plus tenue pour acquise. Le
+    balayage de `20261017120000` a durci **0** fonction lors de son test local
+    sur l'état restauré, ce qui recoupe la mesure distante.
+  - **Correction prête** : `20261017120000_harden_security_definer_search_path.sql`,
+    **réécrite** (balayage dynamique vérifié sur catalogue + assertion fail-loud,
+    non destructive, idempotente) ; elle sert désormais surtout de **garde-fou
+    anti-dérive**. **Non appliquée à distance** (voir §11).
+  - Attention : `get_order_receipt(text,uuid)` et `get_order_tracking(text,uuid)`
+    restent **exécutables par `anon`** (volontairement, le suivi public repose sur
+    l'entropie du `tracking_token`). Elles propageaient pourtant le message SQL
+    brut (`sqlerrm`) à l'appelant : corrigé par
+    `20261018140000_generic_order_rpc_error_messages.sql`, **non appliquée à
+    distance**.
 - Attention : appliquer les migrations pendantes nécessite le mot de passe du rôle
   PostgreSQL (la tentative du 2026-10-13 a échoué sur l'authentification) **et** une
   autorisation explicite, et surtout une sauvegarde préalable.
@@ -450,3 +455,245 @@ Production non protégé.
   en autonomie : ces informations vivent dans des dashboards externes (Upstash,
   Supabase, Brevo) auxquels l'assistant n'a **pas** les identifiants — intervention
   humaine incontournable (§7).
+
+---
+
+## 11. Sauvegarde logique locale (gratuite) et restauration vérifiée — 2026-10-18
+
+Contexte : Supabase **Pro inaccessible financièrement**, et `backups list` renvoie
+`{"backups":[],"pitr_enabled":false}` → **aucune sauvegarde gérée, aucun PITR**.
+Cette section documente une alternative 100 % gratuite, testée de bout en bout.
+
+### 11.1 Canaux d'accès disponibles (vérifiés, aucun secret révélé)
+
+| Canal | État | Usage |
+|---|---|---|
+| `npx supabase db dump` | **inutilisable** | exécute `pg_dump` dans Docker ; Docker Desktop est **cassé** ici (agent `dockerAgent` : `failed to verify docker agent API server health`) |
+| `pg_dump`/`psql`/`pg_restore` | **présents** | `C:\Program Files\PostgreSQL\18\bin` (18.4) |
+| `cli_login_postgres` (Postgres wire) | **connecte mais sans droits** | 0 privilège `SELECT` sur les 25 tables publiques → `pg_dump` échoue (`permission denied for table profiles`) |
+| **Supabase Management API** `POST /v1/projects/{ref}/database/query` | **OPÉRANT** | rôle `supabase_read_only_user`, `transaction_read_only=on` → lecture seule intégrale |
+| Postgres 18 local (service `postgresql-x64-18`) | en écoute | **mot de passe inconnu** (`scram-sha-256`) → non utilisé |
+
+Le token Management API est lu depuis le **Gestionnaire d'credentials Windows**
+(`Supabase CLI:supabase`) via `CredRead`, et **jamais affiché ni écrit**.
+Toutes les requêtes sont émises avec `read_only: true` : **aucune écriture possible
+en production** par construction.
+
+### 11.2 Contenu de la sauvegarde
+
+Emplacement : **`C:\dev\atemi-db-backups\`** — **hors du dépôt Git** (jamais committable).
+
+| Fichier | Taille | SHA256 |
+|---|---|---|
+| `schema.sql` | 112 384 B | `4C2108507DBA77F9DF91AC6DA15C443FA634C43A277C573ACD7BF8957D11CF6A` |
+| `data.sql` | 142 593 B | `8267784740553665854E5BF0B14698AF058B09C117EF51714291BF038609903D` |
+| `manifest.json` | — | comptages, empreintes, dépendances FK, ordre d'insertion, migrations appliquées |
+
+`schema.sql` (13 sections extraites des catalogues) : extensions (informatif),
+types/enum, tables + colonnes générées/identité, contraintes PK/UNIQUE/CHECK,
+**FK en dernier**, index hors contrainte, séquences, vues, fonctions, triggers,
+activation RLS, policies, grants.
+
+`data.sql` : **25 tables / 298 lignes**, générées en `INSERT … json_populate_recordset`
+(colonnes générées exclues, **ordre FK respecté** par tri topologique des 32
+dépendances), plus les **4 comptes `auth.users`** nécessaires à la FK
+`profiles → auth.users`.
+
+### 11.3 Intégrité vérifiée par restauration réelle (preuve, pas intention)
+
+Restauration dans une **instance PostgreSQL jetable locale** (port 5499, `trust`
+sur loopback, **sans toucher au service existant**), avec un stub `auth`
+(`users`, `uid()`, `role()`) et les rôles `anon`/`authenticated`/`service_role`.
+
+| Contrôle | Résultat |
+|---|---|
+| Erreurs à la restauration du schéma | **0** |
+| Erreurs à la restauration des données | **0** |
+| Tables distant vs restauré | **25/25 identiques** |
+| Lignes distant vs restauré | **298 / 298** |
+| Enums / fonctions / FK / policies / RLS actives | 7 / 26 / 32 / 62 / 25 — **identiques** |
+| Contraintes PK/UNIQUE/CHECK (c/f/p/u) | 42 / 32 / 25 / 13 — **identiques** |
+
+Seul écart : le type `contype='n'` (NOT NULL) apparaît dans le catalogue **PG18**
+restauré mais pas dans **PG17.6** distant → **cosmétique**, sans impact sémantique.
+
+### 11.4 Méthode de restauration gratuite — honnête
+
+**Réelle et prouvée** : `prep.sql` (rôles + stub `auth`) → `schema.sql` → `data.sql`,
+en une seule transaction, sur une instance PostgreSQL quelconque (ici 18.4 locale).
+
+**Limites réelles, à connaître avant d'en dépendre :**
+
+1. **Périmètre `public` uniquement** — le schéma `auth` n'est extrait qu'à
+   minimale (`users.id/email/created_at`). `auth.identities`, `auth.sessions`,
+   `auth.refresh_tokens`, `auth.audit_log_entries` **ne sont pas** sauvegardés.
+2. **Fichiers stockés non inclus** — les objets du bucket Storage (images produits)
+   ne sont pas dans le dump ; une restauration complète exige une ré-upload.
+3. **Point-in-time impossible** : c'est un instantané, pas un journal. Aucun
+   PITR sans plan payant.
+4. **Horodatage et séquences** : aucune séquence dans `public` (IDs en
+   `gen_random_uuid()`), donc aucun décalage de séquence à réaligner.
+5. **Stockage** : les fichiers sont sur le disque local de la machine de
+   développement — **pas de redondance**. À copier hors machine (disque externe,
+   coffre) pour être réellement utile en cas de sinistre.
+6. **Rôles/GRANTS** : les rôles Supabase (`anon`, `authenticated`, `service_role`)
+   sont recréés sans droits par défaut ; les `GRANT` de `schema.sql` les réappliquent
+   sur `public`.
+7. **Restauration vers un nouveau projet Supabase** : fonctionne pour `public`
+   + les comptes minimalistes ; il faudra re-créer les utilisateurs réels et
+   leurs identités, ce qui **ne peut pas** être fait avec cette sauvegarde seule.
+
+### 11.5 Test des migrations en attente (sur base locale, avant toute prod)
+
+Appliquées **sur la base restaurée** (donc exactement l'état distant), dans l'ordre
+chronologique — **5 migrations, 5/5 OK** :
+
+| Migration | Résultat |
+|---|---|
+| `20261011120000_restrict_order_email_recovery` | **OK** |
+| `20261013100000_scope_orders_vendor_read_to_authenticated` | **OK** |
+| `20261017120000_harden_security_definer_search_path` | **OK** (réécrite, voir ci-dessous) |
+| `20261018130000_allow_nullable_delivery_for_pickup` | **OK** |
+| `20261018140000_generic_order_rpc_error_messages` | **OK** (nouvelle, voir 11.8) |
+
+**Bugs de migration trouvés puis corrigés** :
+
+1. **Version initiale de `20261017120000`** : `DO BEGIN … END;` **sans délimiteur
+   dollar-quoted** → invalide en PostgreSQL (`syntax error at or near "BEGIN"`) ;
+   elle aurait fait échouer intégralement un `db push`. Le dernier bloc plaçait
+   en outre un `EXCEPTION` à l'intérieur d'un `IF`.
+2. **Version intermédiaire (16 blocs `DO $$`)** — trois défauts silencieux, tous
+   détectés par revue puis par la nouvelle assertion :
+   - signature **erronée** pour `create_order`
+     (`text,text,text,text,text,text,uuid,boolean,text,jsonb,uuid` alors que la
+     fonction réelle est
+     `uuid,text,text,text,text,text,uuid,boolean,text,jsonb,text,text`) →
+     « function does not exist », **avale** par `EXCEPTION WHEN OTHERS THEN NULL` ;
+   - garde **erronée** pour `get_order_receipt` : `pg_get_function_identity_arguments`
+     comparé à `'text,text'` alors que la fonction est `get_order_receipt(text, uuid)`
+     → **le bloc ne s'exécutait jamais** ;
+   - `EXCEPTION WHEN OTHERS THEN NULL` sur chaque bloc → **échec silencieux**,
+     contraire au style fail-loud du dépôt.
+
+**Version actuelle** : balayage dynamique et vérifié sur le catalogue
+(`pg_proc` / `pg_namespace` : `prosecdef`, absence de `search_path` dans
+`proconfig`, exclusion des fonctions possédées par une extension), suivi d'une
+**assertion fail-loud** qui lève une erreur si une fonction SECURITY DEFINER de
+`public` reste sans `search_path`. Idempotente, auto-vérifiante, et corrige
+l'ensemble des défauts ci-dessus d'un coup.
+
+**Constat vérifié** : sur la base restaurée (état distant), le balayage a durci
+**0** fonction et l'assertion est passée → les fonctions publiques portent
+**déjà** `SET search_path = 'public'` (appliqué via `20260904100000`). La valeur
+de cette migration est donc **sécuritaire et anti-dérive**, son effet net actuel
+est nul.
+
+### 11.6 Preuve fonctionnelle du correctif « retrait » (500 corrigé)
+
+Test réel sur la base restaurée après application des migrations, effectué **deux
+fois** (une fois après les 4 migrations initiales, une fois après la réécriture
+de `20261017120000` et l'ajout de `20261018140000`) :
+
+```
+create_order(..., p_delivery_address => NULL, p_delivery_city => NULL,
+             p_delivery_zone_id => NULL, p_delivery_required => false, ...)
+```
+
+Résultat (deuxième passe) : commande **créée** — `CMD-20261018-173440-BD2B54`,
+`delivery_required=false`, `delivery_address=NULL`, `delivery_city=NULL`,
+`delivery_zone_id=NULL`.
+
+Avant le correctif (`20261018130000`), ce même appel échouait par la contrainte
+`NOT NULL` de `orders.delivery_address` / `orders.delivery_city` forcée à `NULL`
+par `create_order` → **HTTP 500 sur toute commande en retrait** en production.
+Le correctif est donc **validé de bout en bout**, sans avoir touché à la production.
+
+### 11.8 Corrections fonctionnelles et sécurité — session du 2026-10-18 (suite)
+
+#### Contradiction de documentation tranchée par mesure directe
+
+`LOCAL_VALIDATION.md` affirmait que `anon`/`authenticated` pouvaient **toujours**
+exécuter `get_order_by_email`, alors que `PRODUCTION_READINESS.md` affirme que le
+REVOKE avait été appliqué. Mesure sur la base restaurée (état distant) :
+
+| Rôle | `EXECUTE` sur `public.get_order_by_email(text,text)` |
+|---|---|
+| `anon` | **false** |
+| `authenticated` | **false** |
+| `service_role` | **true** |
+
+→ **le REVOKE est bien en vigueur** : `PRODUCTION_READINESS.md` avait raison,
+`LOCAL_VALIDATION.md` était obsolète. La récupération par e-mail passe
+exclusivement par `POST /api/order/recovery` (rate-limitée, validée), et le RPC
+direct depuis le navigateur est **impossible**.
+
+**Confirmation sur les catalogues distants eux-mêmes** (Management API, lecture
+seule, requête `has_function_privilege`) — le 2026-10-18 :
+
+| Rôle | `get_order_by_email` | `create_order` | `order_has_vendor_items` | `get_order_receipt` | `get_order_tracking` | `get_my_vendor_id` | `confirm_deposit_payment` |
+|---|---|---|---|---|---|---|---|
+| `anon` | **false** | false | false | **true** | **true** | false | false |
+| `authenticated` | **false** | false | true | **true** | **true** | true | false |
+| `service_role` | true | true | true | true | true | true | true |
+
+Et sur le même relevé : **25** fonctions `SECURITY DEFINER` dans `public`,
+**0 sans `SET search_path`** → l'affirmation d'un dump « 16 fonctions sans
+`SET search_path` » (§5, rédigé le 2026-10-17 à partir de
+`remote_schema_backup.sql`) est **contredite par la mesure** et a été corrigée.
+
+#### Vérifications post-migrations (base restaurée)
+
+| Contrôle | Résultat |
+|---|---|
+| Policy `orders_vendor_read` — rôles | `authenticated` (migration appliquée) |
+| Policy `orders_vendor_read` — prédicat | `((vendor_id = get_my_vendor_id()) OR order_has_vendor_items(id, get_my_vendor_id()))` |
+| `orders.delivery_address` / `delivery_city` NOT NULL | **false / false** (retrait débloqué) |
+| Fonctions SECURITY DEFINER sans `search_path` | **0** |
+| `get_order_receipt` / `get_order_tracking` contenant `sqlerrm` | **0** (après `20261018140000`) |
+| `create_order` — arguments d'identité | `p_customer_id uuid, p_customer_name text, p_customer_phone text, p_customer_whatsapp text, p_delivery_address text, p_delivery_city text, p_delivery_zone_id uuid, p_delivery_required boolean, p_customer_notes text, p_items jsonb, p_customer_email text, p_provider text` |
+
+#### Fuite d'informations corrigée (`sqlerrm`)
+
+`get_order_receipt(text,uuid)` et `get_order_tracking(text,uuid)` rattrapaient
+toute erreur inattendue avec `RAISE EXCEPTION '… : %', sqlerrm`, ce qui remonte le
+message PostgreSQL brut au navigateur d'un appelant **non authentifié** (simple
+détention d'un `order_number` + `tracking_token`). La nouvelle migration
+`20261018140000_generic_order_rpc_error_messages` rejoue les deux corps avec un
+message fixe, et se termine par une **assertion fail-loud** qui échoue si
+`sqlerrm` subsiste. `CREATE OR REPLACE` conserve les grants et le
+`REVOKE … FROM PUBLIC` en place ; les `RAISE` explicites de « commande
+introuvable » sont inchangés (contrat public, aucun détail interne).
+
+#### Corrections applicatives (code)
+
+| # | Problème | Fichier | Correctif |
+|---|---|---|---|
+| 1 | Vendeur légitime **rejeté (403)** sur commande multi-vendeur : `orders.vendor_id` est `NULL` pour un panier multi-vendeurs, et la route tourne en `service_role` (RLS non appliquée) | `src/app/api/vendor/orders/[id]/route.ts` | La propriété est maintenant testée **à l'identique du prédicat RLS** via `order_has_vendor_items(p_order_id, p_vendor_id)` ; contournement réservé à l'admin |
+| 2 | **Idempotence contournable** : n'active que si l'en-tête `Idempotency-Key` était présent → un appel sans en-tête créait une 2ᵉ commande | `src/app/api/orders/route.ts` | La clé est **toujours** dérivée (`getIdempotencyKey`, repli méthode+URL+empreinte du corps) |
+| 3 | **Fenêtre de course** : si la commande était créée mais que le stockage de la réponse d'idempotence échouait, un retry **recréait une commande** | `src/app/api/orders/route.ts` | Replay sans réponse stockée → **409** (« déjà en cours de traitement ») au lieu de retomber dans la création ; stockage déplacé **avant** l'e-mail |
+| 4 | **Double transaction paiement** : deux appels simultanés de `POST /api/payment/initiate` pouvaient chacun créer une transaction fournisseur | `src/app/api/payment/initiate/route.ts` | Idempotence ajoutée (vérification + stockage des URL de paiement créées) ; un échec de la vérification ne bloque jamais le paiement |
+| 5 | **PII superflue** renvoyée par la récupération e-mail alors que `/suivi` ne l'affiche jamais | `src/app/api/order/recovery/route.ts`, `src/app/suivi/page.tsx` | `customer_name` / `customer_phone` retirés du `select` et de la réponse |
+| 6 | Page vendeur en `select('*')` : exposait au vendeur `customer_email`, `customer_notes`, `customer_whatsapp`, `tracking_token`, `vendor_id` sur des commandes **partiellement** les siennes | `src/app/vendor/commandes/page.tsx` | Liste de colonnes explicite, limitée à ce qui est rendu |
+
+#### Vérifications de régression
+
+| Contrôle | Résultat |
+|---|---|
+| `npm run typecheck` | **OK** |
+| `npm run lint` | **OK** — aucun avertissement ni erreur |
+| `npm test` | **28 suites / 400 tests OK** (7 tests ajoutés couvrant les protections ci-dessus) |
+
+L'instance PostgreSQL de validation a été **arrêtée et supprimée**, les tâches
+planificateur **supprimées**, les fichiers temporaires **effacés**. La sauvegarde
+`C:\dev\atemi-db-backups\` est **inchangée et intacte**.
+
+### 11.7 Ce qui reste hors de portée autonome
+
+- **Appliquer** ces 5 migrations en production : nécessite soit un `db push`
+  (Docker cassé), soit un mot de passe base avec droits d'écriture, soit un canal
+  Management API en écriture (le token CLI est en lecture seule). Le SQL distant
+  est `read_only=on` : **aucune écriture possible**, ce qui est aussi une bonne
+  garantie d'accident.
+- **Restaurer dans un projet Supabase vierge** : faisable pour `public` +
+  comptes minimaux, mais **pas** pour les identités/authentifications réelles.
+- **Copie hors machine** de `C:\dev\atemi-db-backups\` (redondance).

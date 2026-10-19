@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { User, Package, FileText, LogOut, Loader2, Save, Key, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import PhoneInput, { PhoneCountry } from '@/components/PhoneInput';
 
 export default function MonComptePage() {
   const { user, profile, loading, signOut } = useAuth();
@@ -13,6 +14,7 @@ export default function MonComptePage() {
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<string>('BJ');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -33,7 +35,19 @@ export default function MonComptePage() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
+      // Parse phone to extract country code if present
+      const rawPhone = profile.phone || '';
+      if (rawPhone.startsWith('+')) {
+        const codeMatch = rawPhone.match(/^\+(\d{1,3})/);
+        if (codeMatch) {
+          setPhoneCountry(codeMatch[1]);
+          setPhone(rawPhone.replace(/^\+?\d{1,3}\s*/, '').replace(/\D/g, ''));
+        } else {
+          setPhone(rawPhone);
+        }
+      } else {
+        setPhone(rawPhone);
+      }
     }
   }, [profile]);
 
@@ -58,7 +72,7 @@ export default function MonComptePage() {
       .from('profiles')
       .update({
         full_name: fullName.trim(),
-        phone: phone.trim() || null,
+        phone: phone.trim() ? `+${phoneCountry} ${phone.trim()}` : phone.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
@@ -162,15 +176,16 @@ export default function MonComptePage() {
                 className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
               />
             </div>
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">T&eacute;l&eacute;phone</label>
-              <input
+<div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <PhoneInput
                 id="phone"
-                type="tel"
+                label="Téléphone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-primary-200 text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:border-transparent"
-                placeholder="+229 01 02 03 04"
+                onChange={(val, c) => { setPhone(val); setPhoneCountry(c.callingCode); }}
+                country={phoneCountry}
+                onCountryChange={(c) => setPhoneCountry(c.callingCode)}
+                placeholder={undefined}
               />
             </div>
           </div>

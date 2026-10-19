@@ -11,14 +11,16 @@ import { getClientIp } from '@/lib/request';
  * Server-side recovery of a guest order by order_number + email. Replaces the
  * direct browser call to the SECURITY DEFINER RPC get_order_by_email() so that:
  *   - lookups run through the service-role admin client (server-only),
- *   - the anonymous exposure of tracking_token + PII is rate-limited per IP,
- *   - the answer stays identical to the legacy RPC output.
+ *   - the exposure of tracking_token is rate-limited per IP,
+ *   - only the fields needed by /suivi are returned.
  *
  * SECURITY CHAIN:
  *   1. Rate limiting (strict per-IP quota, Redis fail-closed in production)
  *   2. Zod payload validation (order_number + email)
  *   3. Direct table read via admin client (RLS bypass, server-only)
  *   4. Generic not-found response (no user enumeration)
+ *   5. Minimal disclosure: only the fields rendered by /suivi are returned
+ *      (customer_name / customer_phone are dropped compared with the legacy RPC)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -45,10 +47,12 @@ export async function POST(request: NextRequest) {
     const orderNumber = parsed.data.order_number.trim();
     const email = parsed.data.email.trim().toLowerCase();
 
+    // Minimal disclosure: customer_name / customer_phone are never rendered by
+    // /suivi, so they are neither selected nor returned.
     const { data: order, error } = await createAdminSupabaseClient()
       .from('orders')
       .select(
-        'order_number, tracking_token, status, total_amount, deposit_amount, delivery_balance, customer_name, customer_phone, delivery_city, created_at'
+        'order_number, tracking_token, status, total_amount, deposit_amount, delivery_balance, delivery_city, created_at'
       )
       .eq('order_number', orderNumber)
       .eq('customer_email', email)
@@ -78,8 +82,6 @@ export async function POST(request: NextRequest) {
       deposit_amount: order.deposit_amount,
       delivery_balance: order.delivery_balance,
       currency: 'XOF',
-      customer_name: order.customer_name,
-      customer_phone: order.customer_phone,
       delivery_city: order.delivery_city,
       created_at: order.created_at,
     });

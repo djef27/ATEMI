@@ -244,3 +244,40 @@ Deux dispatch simultanés ne doivent jamais envoyer deux fois la même notificat
 - [ ] La commande apparaît côté admin (`/admin/commandes`) et vendeur (`/vendor/commandes`)
 - [ ] Les notifications whatsapp passent `pending → sent` (message reçu)
 - [ ] `/api/notifications/dispatch` : 401 sans Bearer, 200 avec
+
+---
+
+## Correction du 2026-10-18 — mesures directes, ce document faisait autorité à tort
+
+Les relevés du **2026-10-13** consignés plus haut affirmaient que `anon` et
+`authenticated` pouvaient **toujours** exécuter `get_order_by_email`. Un sondage
+direct des catalogues **distants** (Management API, lecture seule, requête
+`has_function_privilege`) le **2026-10-18** donne le résultat inverse :
+
+| Rôle | `EXECUTE` sur `public.get_order_by_email(text,text)` |
+|---|---|
+| `anon` | **false** |
+| `authenticated` | **false** |
+| `service_role` | **true** |
+
+→ **le REVOKE de `20261011120000` est bien en vigueur en production** (appliqué
+hors registre, comme l'affirmait `docs/PRODUCTION_READINESS.md`). Les entrées du
+2026-10-13 de ce fichier sont **considérées obsolètes** sur ce point. La
+récupération par e-mail passe uniquement par `POST /api/order/recovery`
+(rate-limitée, validée), et le RPC direct depuis le navigateur est impossible.
+
+Mesures complémentaires du même jour, toujours sur les catalogues distants :
+
+- **25** fonctions `SECURITY DEFINER` dans `public`, dont **0 sans
+  `SET search_path`** → l'affirmation d'un dump « 16 fonctions sans
+  `SET search_path` » n'est **pas confirmée** par les catalogues.
+- `get_order_receipt(text,uuid)` et `get_order_tracking(text,uuid)` restent
+  **`anon=true`** (attendu : le suivi public repose sur l'entropie du
+  `tracking_token`) — mais elles propageaient `sqlerrm` à l'appelant, corrigé par
+  `20261018140000_generic_order_rpc_error_messages.sql` (non appliquée à distance).
+
+Test local complet du 2026-10-18 : restauration de la sauvegarde gratuite sur une
+instance PostgreSQL jetable, puis application des **5** migrations en attente
+(**5/5 OK**), preuve fonctionnelle du correctif retrait, puis arrêt et suppression
+de l'instance. Typecheck, lint et `npm test` (28 suites / 400 tests) au vert.
+Voir `docs/PRODUCTION_READINESS.md` §11.

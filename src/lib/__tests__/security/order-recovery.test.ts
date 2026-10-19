@@ -60,8 +60,6 @@ describe('Order recovery — route execution', () => {
       total_amount: 10000,
       deposit_amount: 5000,
       delivery_balance: 5000,
-      customer_name: 'Test Customer',
-      customer_phone: '+22900000000',
       delivery_city: 'Cotonou',
       created_at: '2026-10-11T10:00:00.000Z',
     };
@@ -76,11 +74,16 @@ describe('Order recovery — route execution', () => {
     }));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    const payload = await response.json();
+    expect(payload).toEqual({
       found: true,
       ...order,
       currency: 'XOF',
     });
+    // Minimal disclosure: the route must not leak PII it never renders.
+    expect(payload).not.toHaveProperty('customer_name');
+    expect(payload).not.toHaveProperty('customer_phone');
+    expect(payload).not.toHaveProperty('customer_email');
     expect(rateLimitMock).toHaveBeenCalledWith(
       'ip:203.0.113.10',
       RATE_LIMIT_CONFIGS.orderRecovery
