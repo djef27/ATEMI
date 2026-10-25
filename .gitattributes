@@ -1,0 +1,25 @@
+# Normalize line endings: store LF in the repository, let each platform
+# check out what it needs. Prevents every skill/doc file from showing up as
+# "modified" after a sync that rewrites files with LF on Windows.
+* text=auto
+
+# Shell scripts and SQL migrations must keep LF even on Windows checkouts.
+*.sh text eol=lf
+*.bash text eol=lf
+*.sql text eol=lf
+
+# Binary assets are never normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
