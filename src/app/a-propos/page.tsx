@@ -3,7 +3,8 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'À propos',
-  description: 'Marketplace africaine de mode, beauté et accessoires — vendeurs et créateurs, au Bénin d&apos;abord.',
+  description:
+    'Marketplace africaine de mode, beauté et accessoires — vendeurs et créateurs, au Bénin d’abord.',
 };
 
 export default function AboutPage() {

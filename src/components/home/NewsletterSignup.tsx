@@ -53,7 +53,7 @@ export default function NewsletterSignup() {
               Restez informé(e)
             </h2>
             <p className="text-gray-300 mb-8">
-              Nouveautés et offres par email ou WhatsApp.
+              Nouveautés et offres, directement par email.
             </p>
 
             {submitted ? (
@@ -73,7 +73,7 @@ export default function NewsletterSignup() {
                   type="email"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  placeholder="Votre email ou numéro WhatsApp"
+                  placeholder="Votre adresse email"
                   required
                   className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:border-transparent text-sm transition-colors duration-300 focus-visible:bg-white/15"
                 />

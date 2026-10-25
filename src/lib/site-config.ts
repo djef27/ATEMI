@@ -57,6 +57,23 @@ export function getContactConfig(): SiteContactConfig {
   };
 }
 
+/** Social profiles — rendered only when a URL is configured */
+export interface SiteSocialLinks {
+  instagram?: string;
+  facebook?: string;
+}
+
+/** Get social profile URLs from public env variables (undefined when unset) */
+export function getSocialLinks(): SiteSocialLinks {
+  const instagram = process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim();
+  const facebook = process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim();
+
+  return {
+    instagram: instagram || undefined,
+    facebook: facebook || undefined,
+  };
+}
+
 /** Site metadata */
 export const SITE_METADATA = {
   name: 'Atémi',

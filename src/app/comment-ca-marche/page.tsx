@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ShoppingBag, CreditCard, Truck, CheckCircle } from 'lucide-react';
 

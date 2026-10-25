@@ -12,7 +12,8 @@ import type { PublicProduct } from '@/types';
 
 export const metadata: Metadata = {
   title: 'Catalogue',
-  description: 'Découvrez notre sélection de produits',
+  description:
+    'Mode, beauté et accessoires : parcourez les créations de nos vendeurs d’Afrique, avec livraison au Bénin.',
 };
 
 interface ProductsPageProps {
