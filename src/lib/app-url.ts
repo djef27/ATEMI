@@ -5,6 +5,18 @@ function getDeploymentOrigin(): string | null {
   return normalizeOrigin(deploymentUrl);
 }
 
+function getNetlifyOrigin(): string | null {
+  const isPreview =
+    process.env.CONTEXT === 'deploy-preview' || process.env.CONTEXT === 'branch-deploy';
+  const deploymentUrl = isPreview
+    ? process.env.DEPLOY_PRIME_URL?.trim() || process.env.URL?.trim()
+    : process.env.URL?.trim();
+
+  if (!deploymentUrl) return null;
+
+  return normalizeOrigin(deploymentUrl);
+}
+
 function normalizeOrigin(value: string): string {
   const url = new URL(value.includes('://') ? value : `https://${value}`);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -25,7 +37,13 @@ function isLoopbackUrl(value: string): boolean {
 export function getAppUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   const deploymentOrigin = getDeploymentOrigin();
+  const netlifyOrigin = getNetlifyOrigin();
   const vercelEnvironment = process.env.VERCEL_ENV;
+  const netlifyContext = process.env.CONTEXT;
+
+  if (netlifyContext === 'deploy-preview' || netlifyContext === 'branch-deploy') {
+    if (netlifyOrigin) return netlifyOrigin;
+  }
 
   if (vercelEnvironment === 'preview') {
     if (deploymentOrigin) return deploymentOrigin;
@@ -34,11 +52,13 @@ export function getAppUrl(): string {
     }
   }
 
-  if (configuredUrl && !(vercelEnvironment && isLoopbackUrl(configuredUrl))) {
+  const isDeployed = Boolean(vercelEnvironment || netlifyContext);
+  if (configuredUrl && !(isDeployed && isLoopbackUrl(configuredUrl))) {
     return normalizeOrigin(configuredUrl);
   }
 
   if (deploymentOrigin) return deploymentOrigin;
+  if (netlifyOrigin) return netlifyOrigin;
 
   if (vercelEnvironment === 'production') {
     throw new Error('[APP URL] Configure NEXT_PUBLIC_APP_URL for the production deployment.');

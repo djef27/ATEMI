@@ -1,0 +1,15 @@
+# ATEMI — Netlify configuration (Next.js App Router).
+#
+# The site uses Netlify's Next.js Runtime (framework detected as "Next.js"):
+# .next is a server build, not a static export. Keep authentication, API routes,
+# middleware and Server Actions on the server runtime.
+#
+# Node 22 LTS is pinned because this repository targets Next.js 15.5 and the
+# project has a documented ESLint timeout with ESLint 8 on Node 24.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"

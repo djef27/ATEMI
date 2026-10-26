@@ -68,11 +68,15 @@ export function getPaymentConfig(): PaymentConfig {
   if (isProduction && !isMock) {
     const sandboxProductionAllowed =
       process.env.KKIAPAY_ALLOW_SANDBOX_PRODUCTION?.trim().toLowerCase() === 'true';
+    const isPreviewDeployment =
+      process.env.VERCEL_ENV === 'preview' ||
+      process.env.CONTEXT === 'deploy-preview' ||
+      process.env.CONTEXT === 'branch-deploy';
     if (
       provider === 'kkiapay' &&
       sandbox &&
       !sandboxProductionAllowed &&
-      process.env.VERCEL_ENV !== 'preview'
+      !isPreviewDeployment
     ) {
       throw new Error(
         '[PAYMENT CONFIG] Les clés KKiaPay Sandbox ne peuvent pas être utilisées en production. ' +

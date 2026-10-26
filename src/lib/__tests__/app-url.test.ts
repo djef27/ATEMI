@@ -6,12 +6,18 @@ describe('getAppUrl', () => {
     NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
     VERCEL_URL: process.env.VERCEL_URL,
+    CONTEXT: process.env.CONTEXT,
+    URL: process.env.URL,
+    DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL,
   };
 
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.VERCEL_ENV;
     delete process.env.VERCEL_URL;
+    delete process.env.CONTEXT;
+    delete process.env.URL;
+    delete process.env.DEPLOY_PRIME_URL;
   });
 
   afterAll(() => {
@@ -53,6 +59,30 @@ describe('getAppUrl', () => {
     process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
     process.env.VERCEL_ENV = 'preview';
 
-    expect(() => getAppUrl()).toThrow('VERCEL_URL is required for a Preview deployment');
+    expect(() => getAppUrl()).toThrow('VERCEL_URL is required for a Preview deployment.');
+  });
+
+  it('uses the Netlify deploy preview URL for preview deployments', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://atemi.netlify.app';
+    process.env.CONTEXT = 'deploy-preview';
+    process.env.DEPLOY_PRIME_URL = 'https://deploy-preview-42--atemi.netlify.app';
+    process.env.URL = 'https://atemi.netlify.app';
+
+    expect(getAppUrl()).toBe('https://deploy-preview-42--atemi.netlify.app');
+  });
+
+  it('uses the Netlify site URL when no public app URL is configured', () => {
+    process.env.CONTEXT = 'production';
+    process.env.URL = 'https://atemi.netlify.app';
+
+    expect(getAppUrl()).toBe('https://atemi.netlify.app');
+  });
+
+  it('ignores a localhost app URL on Netlify and falls back to the site URL', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+    process.env.CONTEXT = 'production';
+    process.env.URL = 'https://atemi.netlify.app';
+
+    expect(getAppUrl()).toBe('https://atemi.netlify.app');
   });
 });
