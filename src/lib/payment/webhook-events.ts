@@ -51,6 +51,15 @@ export function parseEvent(
     return { id: String(raw.id), type: String(raw.type), data: entity };
   }
 
+  if (provider === 'saspay') {
+    // SasPay: { event: "transaction.success", data: { id, reference, ... } }
+    if (!raw.event || !raw.data) return null;
+    const eventData = raw.data as Record<string, unknown>;
+    const transactionId = eventData.reference || eventData.id;
+    if (!transactionId) return null;
+    return { id: String(transactionId), type: String(raw.event), data: eventData };
+  }
+
   // Stripe / Paystack: { id, type, data: { object: {...} } }
   const data = raw.data as Record<string, unknown> | undefined;
   const object = data?.object as Record<string, unknown> | undefined;
@@ -66,6 +75,11 @@ export function extractTransactionId(data: Record<string, unknown>, provider: st
   if (provider === 'cinetpay') {
     return (data.cpm_trans_id as string) || (data.transaction_id as string) || null;
   }
+
+  if (provider === 'saspay') {
+    return (data.reference as string) || (data.id as string) || null;
+  }
+
   // Stripe / Paystack
   return (data.reference as string) ||
          (data.id as string) ||
@@ -103,6 +117,17 @@ export function extractAmountCurrency(
     };
   }
 
+  if (provider === 'saspay') {
+    // SasPay amounts are strings in decimal format ("5000.00")
+    const amount = typeof data.amount === 'string'
+      ? parseFloat(data.amount)
+      : typeof data.amount === 'number'
+        ? data.amount
+        : null;
+    const currency = typeof data.currency === 'string' ? data.currency.toUpperCase() : 'XOF';
+    return { amount: amount === 0 ? null : amount, currency: amount === null ? null : currency };
+  }
+
   return { amount: null, currency: null };
 }
 
@@ -118,6 +143,9 @@ export function extractPaymentMethod(data: Record<string, unknown>, provider: st
   }
   if (provider === 'cinetpay') {
     return (data.cpm_payment_method as string) || (data.payment_method as string) || 'cinetpay';
+  }
+  if (provider === 'saspay') {
+    return (data.network as string) || (data.type as string) || 'saspay';
   }
   return (data.channel as string) || (data.mode as string) || 'webhook';
 }

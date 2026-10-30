@@ -119,7 +119,15 @@ export async function POST(request: NextRequest) {
                       request.headers.get('x-paystack-signature') ||
                       request.headers.get('x-webhook-signature');
 
-    const verification = await provider.verifyWebhook(body, signature, null);
+    // SasPay-specific: timestamp is required for HMAC verification
+    // Other providers verify their own signature mechanisms; timestamp
+    // is handled internally by the provider adapter.
+    let timestampHeader: string | null = null;
+    if (config.provider === 'saspay') {
+      timestampHeader = request.headers.get('x-webhook-timestamp');
+    }
+
+    const verification = await provider.verifyWebhook(body, signature, timestampHeader);
 
     if (!verification.valid) {
       console.warn('[WEBHOOK_SIGNATURE_INVALID]', {
