@@ -12,6 +12,7 @@ import { MockPaymentProvider } from './mock';
 import { FedaPayPaymentProvider } from './fedapay';
 import { CinetPayPaymentProvider } from './cinetpay';
 import { KKiaPayPaymentProvider } from './kkiapay';
+import { SasPayPaymentProvider } from './saspay';
 
 let _realProvider: PaymentProvider | null = null;
 
@@ -53,6 +54,14 @@ export function getPaymentProvider(): PaymentProvider {
         sandbox: config.sandbox,
       });
       break;
+    case 'saspay':
+      _realProvider = new SasPayPaymentProvider({
+        apiKey: config.apiKey,
+        webhookSecret: config.webhookSecret,
+        baseUrl: config.baseUrl,
+        environment: config.environment,
+      });
+      break;
 
     default:
       throw new Error(
@@ -75,3 +84,4 @@ export { MockPaymentProvider } from './mock';
 export { FedaPayPaymentProvider } from './fedapay';
 export { CinetPayPaymentProvider } from './cinetpay';
 export { KKiaPayPaymentProvider } from './kkiapay';
+export { SasPayPaymentProvider } from './saspay';

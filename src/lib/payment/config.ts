@@ -6,7 +6,7 @@
  * silent failure.
  */
 
-export type PaymentProviderName = 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay';
+export type PaymentProviderName = 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay' | 'saspay';
 
 export interface PaymentConfig {
   provider: PaymentProviderName;
@@ -19,6 +19,8 @@ export interface PaymentConfig {
   sandbox: boolean;
   isProduction: boolean;
   isMock: boolean;
+  baseUrl: string;
+  environment: 'sandbox' | 'live';
 }
 
 function requireEnv(name: string, fallback?: string): string {
@@ -34,7 +36,7 @@ function requireEnv(name: string, fallback?: string): string {
 
 function getProviderName(): PaymentProviderName {
   const raw = process.env.PAYMENT_PROVIDER?.toLowerCase().trim();
-  if (raw === 'cinetpay' || raw === 'fedapay' || raw === 'kkiapay') return raw;
+  if (raw === 'cinetpay' || raw === 'fedapay' || raw === 'kkiapay' || raw === 'saspay') return raw;
   if (process.env.NODE_ENV === 'production' && (!raw || raw === 'mock')) {
     throw new Error(
       '[PAYMENT CONFIG] PAYMENT_PROVIDER doit être configuré avec un prestataire réel en production. ' +
@@ -44,7 +46,7 @@ function getProviderName(): PaymentProviderName {
   if (raw === 'mock' || !raw) return 'mock';
   throw new Error(
     `[PAYMENT CONFIG] PAYMENT_PROVIDER inconnu: "${raw}". ` +
-    `Fournisseurs valides: cinetpay, fedapay, kkiapay`
+    `Fournisseurs valides: cinetpay, fedapay, kkiapay, saspay`
   );
 }
 
@@ -88,18 +90,28 @@ export function getPaymentConfig(): PaymentConfig {
       ? requireEnv('CINETPAY_API_KEY', process.env.PAYMENT_API_KEY)
       : provider === 'kkiapay'
         ? requireEnv('KKIAPAY_PUBLIC_KEY')
-        : requireEnv('PAYMENT_API_KEY');
+        : provider === 'saspay'
+          ? requireEnv('SASPay_API_KEY')
+          : requireEnv('PAYMENT_API_KEY');
     const apiSecret = provider === 'cinetpay'
       ? requireEnv('CINETPAY_SECRET_KEY', process.env.PAYMENT_API_SECRET)
       : provider === 'kkiapay'
         ? requireEnv('KKIAPAY_PRIVATE_KEY')
-        : requireEnv('PAYMENT_API_SECRET');
+        : provider === 'saspay'
+          ? ''
+          : requireEnv('PAYMENT_API_SECRET');
     const privateKey = provider === 'kkiapay' ? apiSecret : '';
     const secretKey = provider === 'kkiapay' ? requireEnv('KKIAPAY_SECRET_KEY') : '';
     const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || '';
     const siteId = provider === 'cinetpay' ? requireEnv('CINETPAY_SITE_ID') : '';
+    const baseUrl = provider === 'saspay'
+      ? process.env.SASPay_BASE_URL || 'https://api.saspay.me/api/v1'
+      : '';
+    const environment = provider === 'saspay'
+      ? (process.env.SASPay_ENVIRONMENT?.trim().toLowerCase() === 'live' ? 'live' : 'sandbox')
+      : 'sandbox';
 
-    _config = { provider, apiKey, apiSecret, privateKey, secretKey, webhookSecret, siteId, sandbox, isProduction, isMock };
+    _config = { provider, apiKey, apiSecret, privateKey, secretKey, webhookSecret, siteId, sandbox, baseUrl, environment, isProduction, isMock };
   } else {
     // Development/test: allow missing secrets for mock
     _config = {
@@ -108,17 +120,27 @@ export function getPaymentConfig(): PaymentConfig {
         ? process.env.CINETPAY_API_KEY || process.env.PAYMENT_API_KEY || ''
         : provider === 'kkiapay'
           ? process.env.KKIAPAY_PUBLIC_KEY || ''
-          : process.env.PAYMENT_API_KEY || '',
+          : provider === 'saspay'
+            ? process.env.SASPay_API_KEY || ''
+            : process.env.PAYMENT_API_KEY || '',
       apiSecret: provider === 'cinetpay'
         ? process.env.CINETPAY_SECRET_KEY || process.env.PAYMENT_API_SECRET || ''
         : provider === 'kkiapay'
           ? process.env.KKIAPAY_PRIVATE_KEY || ''
-          : process.env.PAYMENT_API_SECRET || '',
+          : provider === 'saspay'
+            ? ''
+            : process.env.PAYMENT_API_SECRET || '',
       privateKey: process.env.KKIAPAY_PRIVATE_KEY || '',
       secretKey: process.env.KKIAPAY_SECRET_KEY || '',
       webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || '',
       siteId: process.env.CINETPAY_SITE_ID || '',
       sandbox,
+      baseUrl: provider === 'saspay'
+        ? process.env.SASPay_BASE_URL || 'https://api.saspay.me/api/v1'
+        : '',
+      environment: provider === 'saspay'
+        ? (process.env.SASPay_ENVIRONMENT?.trim().toLowerCase() === 'live' ? 'live' : 'sandbox')
+        : 'sandbox',
       isProduction,
       isMock,
     };

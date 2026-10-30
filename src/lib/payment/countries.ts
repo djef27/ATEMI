@@ -2,7 +2,7 @@ export interface CountryPaymentConfig {
   country: string;
   currency: 'XOF';
   paymentMethods: Array<{ id: string; displayName: string; enabled: boolean }>;
-  provider: 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay';
+  provider: 'mock' | 'cinetpay' | 'fedapay' | 'kkiapay' | 'saspay';
 }
 
 const COUNTRY_METHODS: Record<string, Array<{ id: string; displayName: string }>> = {
@@ -50,6 +50,17 @@ export function getPaymentMethods(country: string): CountryPaymentConfig | null 
       currency: 'XOF',
       provider,
       paymentMethods: [{ id: 'mobile_money', displayName: 'Mobile Money', enabled: true }],
+    };
+  }
+
+  if (provider === 'saspay') {
+    return {
+      country: code,
+      currency: 'XOF',
+      provider: 'saspay',
+      paymentMethods: [
+        { id: 'saspay', displayName: 'SasPay Mobile Money', enabled: true },
+      ],
     };
   }
   if (provider !== 'cinetpay') return null;
