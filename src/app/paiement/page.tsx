@@ -10,6 +10,13 @@ import { useCart } from '@/hooks/use-cart';
 
 type PaymentState = 'loading' | 'redirecting' | 'ready_to_pay' | 'verifying' | 'success' | 'pending_confirmation' | 'failed' | 'error' | 'not_found';
 
+// An ad-blocker or a stalled request makes next/script fire neither onLoad nor
+// onError, so readiness is polled from the global the CDN script exposes.
+const KKIAPAY_SCRIPT_TIMEOUT_MS = 20000;
+const KKIAPAY_SCRIPT_POLL_INTERVAL_MS = 300;
+
+const PAYMENT_INITIATE_TIMEOUT_MS = 20000;
+
 interface KKiaPayWidgetOptions {
   amount: number;
   key: string;
@@ -97,6 +104,7 @@ function PaiementForm() {
   const [pendingKkiapayTransactionId, setPendingKkiapayTransactionId] = useState<string | null>(null);
   const [mockAmount, setMockAmount] = useState<number | null>(null);
   const [kkiapayScriptReady, setKkiapayScriptReady] = useState(false);
+  const [kkiapayScriptFailed, setKkiapayScriptFailed] = useState(false);
   const initiatedRef = useRef(false);
   const successListenerRef = useRef(false);
   const verificationStartedRef = useRef(false);
@@ -155,6 +163,8 @@ function PaiementForm() {
     initiatedRef.current = true;
 
     const initiate = async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), PAYMENT_INITIATE_TIMEOUT_MS);
       try {
         const response = await fetch('/api/payment/initiate', {
           method: 'POST',
@@ -165,6 +175,7 @@ function PaiementForm() {
             country,
             payment_method: paymentMethod,
           }),
+          signal: controller.signal,
         });
 
         const result = await response.json();
@@ -210,9 +221,15 @@ function PaiementForm() {
 
         setError('Réponse inattendue du serveur.');
         setPaymentState('error');
-      } catch {
-        setError('Une erreur est survenue. Vérifiez votre connexion.');
+      } catch (initiateError) {
+        if (initiateError instanceof DOMException && initiateError.name === 'AbortError') {
+          setError('Le serveur de paiement met trop de temps à répondre. Vérifiez votre connexion puis réessayez.');
+        } else {
+          setError('Une erreur est survenue. Vérifiez votre connexion.');
+        }
         setPaymentState('error');
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     };
 
@@ -273,6 +290,30 @@ function PaiementForm() {
     });
     successListenerRef.current = true;
   }, [kkiapayInit, kkiapayScriptReady, orderNumber, trackingToken]);
+
+  useEffect(() => {
+    if (!kkiapayInit || kkiapayScriptReady || kkiapayScriptFailed) return;
+
+    if (typeof window.openKkiapayWidget === 'function') {
+      setKkiapayScriptReady(true);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      if (typeof window.openKkiapayWidget === 'function') {
+        window.clearInterval(intervalId);
+        setKkiapayScriptReady(true);
+        return;
+      }
+      if (Date.now() - startedAt >= KKIAPAY_SCRIPT_TIMEOUT_MS) {
+        window.clearInterval(intervalId);
+        setKkiapayScriptFailed(true);
+      }
+    }, KKIAPAY_SCRIPT_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [kkiapayInit, kkiapayScriptFailed, kkiapayScriptReady]);
 
   if (paymentState === 'loading' || paymentState === 'redirecting' || paymentState === 'verifying') {
     return (
@@ -337,40 +378,64 @@ function PaiementForm() {
           src="https://cdn.kkiapay.me/k.js"
           strategy="afterInteractive"
           onLoad={() => setKkiapayScriptReady(true)}
-          onError={() => {
-            setError('Impossible de charger le module de paiement KKiaPay.');
-            setPaymentState('error');
-          }}
+          onError={() => setKkiapayScriptFailed(true)}
         />
         <h1 className="text-2xl font-bold text-[#1A1919] font-serif mb-3">Paiement sécurisé</h1>
         <p className="text-gray-600 mb-2">Commande {orderNumber}</p>
         <p className="text-gray-600 mb-8">Montant à payer : {new Intl.NumberFormat('fr-FR').format(kkiapayInit.amount)} XOF</p>
-        <button
-          type="button"
-          disabled={!kkiapayScriptReady}
-          onClick={() => {
-            if (!window.openKkiapayWidget) {
-              setError('Le module KKiaPay n’est pas disponible. Rechargez la page pour réessayer.');
-              setPaymentState('error');
-              return;
-            }
-            window.openKkiapayWidget({
-              amount: kkiapayInit.amount,
-              key: kkiapayInit.public_key,
-              sandbox: kkiapayInit.sandbox,
-              phone: normalizeKKiaPayPhone(kkiapayInit.customer.phone, kkiapayInit.country),
-              name: kkiapayInit.customer.name,
-              email: kkiapayInit.customer.email || undefined,
-              paymentmethod: 'momo',
-              countries: [kkiapayInit.country],
-              partnerId: orderNumber || '',
-              position: 'center',
-            });
-          }}
-          className="px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {kkiapayScriptReady ? 'Payer avec KKiaPay' : 'Chargement du paiement…'}
-        </button>
+        {kkiapayScriptFailed ? (
+          <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left sm:p-5">
+            <p className="text-sm font-medium text-amber-900">
+              Le module de paiement KKiaPay ne répond pas.
+            </p>
+            <p className="mt-2 text-sm text-amber-800">
+              Vérifiez votre connexion internet et désactivez tout bloqueur de publicité, puis réessayez.
+              Si le problème persiste, ouvrez ce lien dans un autre navigateur (Chrome, Firefox ou Safari).
+              <br />
+              Votre commande {orderNumber} reste enregistrée : aucun montant n&apos;a été débité.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 rounded-lg bg-primary-900 text-white text-sm font-medium hover:bg-primary-800 transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={!kkiapayScriptReady}
+              onClick={() => {
+                if (!window.openKkiapayWidget) {
+                  setKkiapayScriptFailed(true);
+                  return;
+                }
+                window.openKkiapayWidget({
+                  amount: kkiapayInit.amount,
+                  key: kkiapayInit.public_key,
+                  sandbox: kkiapayInit.sandbox,
+                  phone: normalizeKKiaPayPhone(kkiapayInit.customer.phone, kkiapayInit.country),
+                  name: kkiapayInit.customer.name,
+                  email: kkiapayInit.customer.email || undefined,
+                  paymentmethod: 'momo',
+                  countries: [kkiapayInit.country],
+                  partnerId: orderNumber || '',
+                  position: 'center',
+                });
+              }}
+              className="px-6 py-3 rounded-lg bg-primary-900 text-white font-medium hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {kkiapayScriptReady ? 'Payer avec KKiaPay' : 'Chargement du paiement…'}
+            </button>
+            {!kkiapayScriptReady && (
+              <p className="text-sm text-gray-500 mt-3" role="status" aria-live="polite">
+                Chargement du module de paiement sécurisé…
+              </p>
+            )}
+          </>
+        )}
         <p className="text-xs text-gray-500 mt-4">Votre commande est confirmée uniquement après vérification du paiement par notre serveur.</p>
       </div>
     );
