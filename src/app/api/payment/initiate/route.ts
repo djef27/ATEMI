@@ -204,6 +204,78 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (config.provider === 'saspay') {
+      if (!config.apiKey) {
+        return NextResponse.json(
+          { success: false, error: 'La clé API SasPay n’est pas configurée' },
+          { status: 503 }
+        );
+      }
+      if (!config.webhookSecret) {
+        return NextResponse.json(
+          { success: false, error: 'Le secret webhook SasPay n’est pas configuré' },
+          { status: 503 }
+        );
+      }
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      const transactionId = `ATEMI-${order.order_number}-${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+
+      const { SasPayPaymentProvider } = await import('@/lib/payment/providers/saspay');
+      const provider = new SasPayPaymentProvider({
+        apiKey: config.apiKey,
+        webhookSecret: config.webhookSecret,
+        baseUrl: config.baseUrl,
+        environment: config.environment,
+      });
+      const { checkoutUrl, reference } = await provider.createCheckoutSession({
+        amount: payment.amount,
+        description: `Acompte commande ${order.order_number}`,
+        customerEmail: order.customer_email || `${order.order_number}@atemi.local`,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        returnUrl: `${appUrl}/paiement?order=${encodeURIComponent(order.order_number)}&token=${tracking_token}&return=1`,
+        country: country?.toUpperCase() || 'BJ',
+        metadata: {
+          provider_reference: transactionId,
+          order_number: order.order_number,
+        },
+      });
+
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({
+          provider: 'saspay',
+          transaction_reference: reference,
+          provider_transaction_id: reference,
+          payment_url: checkoutUrl,
+          country: country?.toUpperCase() || null,
+          payment_method: payment_method || 'saspay',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', payment.id);
+      if (updateError) {
+        console.error('[PAYMENT_INITIATE] SasPay metadata update failed:', updateError.message);
+        return NextResponse.json(
+          { success: false, error: 'Impossible de préparer le paiement SasPay' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        provider: 'saspay',
+        amount: payment.amount,
+        checkout_url: checkoutUrl,
+        reference: reference,
+        customer: {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          email: order.customer_email,
+        },
+      });
+    }
+
     if (config.isMock) {
       const { error: updateError } = await supabase
         .from('payments')
