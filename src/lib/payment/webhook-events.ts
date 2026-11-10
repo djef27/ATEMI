@@ -11,11 +11,15 @@ export interface ParsedWebhookEvent {
   data: Record<string, unknown>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function parseEvent(
   body: string,
   provider: string
 ): ParsedWebhookEvent | null {
-  let raw: Record<string, unknown>;
+  let raw: unknown;
   try {
     if (provider === 'cinetpay' && !body.trimStart().startsWith('{')) {
       raw = Object.fromEntries(new URLSearchParams(body).entries());
@@ -25,6 +29,8 @@ export function parseEvent(
   } catch {
     return null;
   }
+
+  if (!isRecord(raw)) return null;
 
   if (provider === 'cinetpay') {
     const transactionId = raw.cpm_trans_id || raw.transaction_id;
@@ -40,29 +46,31 @@ export function parseEvent(
   }
 
   if (provider === 'fedapay') {
-    // FedaPay: { id, type, entity: "<JSON string>", ... }
-    if (!raw.id || !raw.type || typeof raw.entity !== 'string') return null;
-    let entity: Record<string, unknown>;
-    try {
-      entity = JSON.parse(raw.entity);
-    } catch {
-      return null;
+    if (!raw.id || !raw.type) return null;
+    let entity: unknown = raw.entity;
+    if (typeof entity === 'string') {
+      try {
+        entity = JSON.parse(entity);
+      } catch {
+        return null;
+      }
     }
+    if (!isRecord(entity)) return null;
     return { id: String(raw.id), type: String(raw.type), data: entity };
   }
 
   if (provider === 'saspay') {
     // SasPay: { event: "transaction.success", data: { id, reference, ... } }
-    if (!raw.event || !raw.data) return null;
-    const eventData = raw.data as Record<string, unknown>;
+    if (!raw.event || !isRecord(raw.data)) return null;
+    const eventData = raw.data;
     const transactionId = eventData.reference || eventData.id;
     if (!transactionId) return null;
     return { id: String(transactionId), type: String(raw.event), data: eventData };
   }
 
   // Stripe / Paystack: { id, type, data: { object: {...} } }
-  const data = raw.data as Record<string, unknown> | undefined;
-  const object = data?.object as Record<string, unknown> | undefined;
+  const data = isRecord(raw.data) ? raw.data : null;
+  const object = data && isRecord(data.object) ? data.object : null;
   if (!raw.id || !raw.type || !object) return null;
   return { id: String(raw.id), type: String(raw.type), data: object };
 }

@@ -42,41 +42,62 @@ export const orderItemSchema = z.object({
     .max(999, 'quantité maximale: 999'),
 });
 
+const phoneNumberSchema = z
+  .string({ invalid_type_error: 'Veuillez saisir un numéro de téléphone valide.' })
+  .trim()
+  .min(1, 'Veuillez saisir un numéro de téléphone valide.')
+  .max(25, 'Le numéro de téléphone ne doit pas dépasser 25 caractères.')
+  .regex(/^(?:\+?[0-9](?:[0-9 .-]*[0-9])?)?$/, 'Veuillez saisir un numéro de téléphone valide.')
+  .refine((phone) => {
+    const digitCount = phone.replace(/\D/g, '').length;
+    return digitCount >= 7 && digitCount <= 15;
+  }, 'Veuillez saisir un numéro de téléphone valide.');
+
+export const checkoutCustomerFieldsSchema = z.object({
+  customer_name: z
+    .string({ invalid_type_error: 'Veuillez saisir votre nom complet.' })
+    .trim()
+    .min(1, 'Veuillez saisir votre nom complet.')
+    .max(100, 'Votre nom complet ne doit pas dépasser 100 caractères.'),
+  customer_phone: phoneNumberSchema.refine(
+    (phone) => phone.length > 0,
+    'Veuillez saisir un numéro de téléphone valide.'
+  ),
+  customer_whatsapp: phoneNumberSchema.nullable().optional(),
+  customer_email: z
+    .string({ invalid_type_error: 'Veuillez saisir une adresse email valide.' })
+    .trim()
+    .max(254, 'Votre adresse email ne doit pas dépasser 254 caractères.')
+    .email('Veuillez saisir une adresse email valide.')
+    .nullable()
+    .optional()
+    .or(z.literal('')),
+  delivery_address: z
+    .string({ invalid_type_error: 'Votre adresse doit être du texte.' })
+    .trim()
+    .max(250, 'Votre adresse ne doit pas dépasser 250 caractères.')
+    .nullable()
+    .optional(),
+  delivery_city: z
+    .string({ invalid_type_error: 'Le nom de la ville doit être du texte.' })
+    .trim()
+    .max(100, 'Le nom de la ville ne doit pas dépasser 100 caractères.')
+    .nullable()
+    .optional(),
+  customer_notes: z
+    .string({ invalid_type_error: 'Les instructions de livraison doivent être du texte.' })
+    .trim()
+    .max(500, 'Les instructions de livraison ne doivent pas dépasser 500 caractères.')
+    .nullable()
+    .optional(),
+});
+
 export const orderCreateSchema = z.object({
-  p_customer_name: z
-    .string()
-    .trim()
-    .min(1, 'nom requis')
-    .max(200, 'nom trop long'),
-
-  p_customer_phone: z
-    .string()
-    .trim()
-    .min(1, 'téléphone requis')
-    .max(20, 'téléphone trop long')
-    .regex(/^\+?[0-9\s\-]+$/, 'format de téléphone invalide'),
-
-  p_customer_whatsapp: z
-    .string()
-    .trim()
-    .max(20, 'whatsapp trop long')
-    .regex(/^\+?[0-9\s\-]*$/, 'format whatsapp invalide')
-    .nullable()
-    .optional(),
-
-  p_delivery_address: z
-    .string()
-    .trim()
-    .max(500, 'adresse trop longue')
-    .nullable()
-    .optional(),
-
-  p_delivery_city: z
-    .string()
-    .trim()
-    .max(100, 'ville trop longue')
-    .nullable()
-    .optional(),
+  p_customer_name: checkoutCustomerFieldsSchema.shape.customer_name,
+  p_customer_phone: checkoutCustomerFieldsSchema.shape.customer_phone,
+  p_customer_whatsapp: checkoutCustomerFieldsSchema.shape.customer_whatsapp,
+  p_delivery_address: checkoutCustomerFieldsSchema.shape.delivery_address,
+  p_delivery_city: checkoutCustomerFieldsSchema.shape.delivery_city,
 
   p_delivery_zone_id: z
     .string()
@@ -87,12 +108,7 @@ export const orderCreateSchema = z.object({
 
   p_delivery_required: z.boolean().default(true),
 
-  p_customer_notes: z
-    .string()
-    .trim()
-    .max(1000, 'notes trop longues')
-    .nullable()
-    .optional(),
+  p_customer_notes: checkoutCustomerFieldsSchema.shape.customer_notes,
 
   p_items: z
     .array(orderItemSchema)
@@ -130,15 +146,17 @@ export const vendorCreateSchema = z.object({
 
   phone: z
     .string()
-    .max(20, 'téléphone trop long')
-    .regex(/^\+?[0-9\s\-]*$/, 'format de téléphone invalide')
+    .trim()
+    .max(25, 'téléphone trop long')
+    .regex(/^(?:\+?[0-9](?:[0-9 .-]*[0-9])?)?$/, 'format de téléphone invalide')
     .nullable()
     .optional(),
 
   whatsapp_number: z
     .string()
-    .max(20, 'whatsapp trop long')
-    .regex(/^\+?[0-9\s\-]*$/, 'format whatsapp invalide')
+    .trim()
+    .max(25, 'whatsapp trop long')
+    .regex(/^(?:\+?[0-9](?:[0-9 .-]*[0-9])?)?$/, 'format whatsapp invalide')
     .nullable()
     .optional(),
 

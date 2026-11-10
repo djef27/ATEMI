@@ -45,21 +45,26 @@ export const PATCH = withAdminAuth(async (request, { supabase, params }) => {
     const conflictQuery = () =>
       supabase
         .from('delivery_zones')
-        .select('id, city')
+        .select('id, city, zone_name')
         .eq('country', existing.country)
-        .eq('zone_name', nextZoneName)
         .neq('id', id);
 
-    const normalizedLookup = await conflictQuery().eq('city_normalized', normalizeCity(nextCity));
-    let conflicts: Array<{ id: string; city: string }> = normalizedLookup.data || [];
+    const normalizedCity = normalizeCity(nextCity);
+    const normalizedZoneName = normalizeCity(nextZoneName);
+    const normalizedLookup = await conflictQuery()
+      .eq('city_name_normalized', normalizedCity)
+      .eq('zone_name_normalized', normalizedZoneName);
+    let conflicts: Array<{ id: string; city: string; zone_name: string }> = normalizedLookup.data || [];
 
     if (normalizedLookup.error && isUndefinedColumnError(normalizedLookup.error)) {
       const all = await conflictQuery();
       if (all.error) {
         return NextResponse.json({ success: false, error: 'Erreur lors du chargement' }, { status: 500 });
       }
-      const normalized = normalizeCity(nextCity);
-      conflicts = (all.data || []).filter((z) => normalizeCity(String(z.city)) === normalized);
+      conflicts = (all.data || []).filter((z) =>
+        normalizeCity(String(z.city)) === normalizedCity &&
+        normalizeCity(String(z.zone_name)) === normalizedZoneName
+      );
     } else if (normalizedLookup.error) {
       return NextResponse.json({ success: false, error: 'Erreur lors du chargement' }, { status: 500 });
     }
@@ -88,6 +93,12 @@ export const PATCH = withAdminAuth(async (request, { supabase, params }) => {
     .single();
 
   if (updateError) {
+    if (updateError.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Cette ville contient déjà une zone identique' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ success: false, error: 'Erreur lors de la modification' }, { status: 500 });
   }
 

@@ -4,10 +4,9 @@ import { KKiaPayPaymentProvider } from '@/lib/payment/providers/kkiapay';
 jest.mock('@kkiapay-org/nodejs-sdk', () => ({
   kkiapay: jest.fn(() => ({
     verify: jest.fn().mockResolvedValue({
-      transactionId: 'KK-1',
+      transaction_id: 'KK-1',
       amount: 5000,
       status: 'SUCCESS',
-      type: 'DEBIT',
       performed_at: '2026-10-02T12:00:00.000Z',
       source: 'MOBILE_MONEY',
     }),

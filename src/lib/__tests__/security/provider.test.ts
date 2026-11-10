@@ -135,6 +135,44 @@ describe('Payment Provider Abstraction', () => {
       resetPaymentConfig();
     });
 
+    it('requires the FedaPay webhook secret in production but not its unused public key', async () => {
+      const originalEnv = {
+        NODE_ENV: process.env.NODE_ENV,
+        PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+        PAYMENT_API_KEY: process.env.PAYMENT_API_KEY,
+        PAYMENT_API_SECRET: process.env.PAYMENT_API_SECRET,
+        PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET,
+      };
+      const { getPaymentConfig, resetPaymentConfig } = await import('@/lib/payment/config');
+      const nodeEnvKey: string = 'NODE_ENV';
+
+      try {
+        process.env[nodeEnvKey] = 'production';
+        process.env.PAYMENT_PROVIDER = 'fedapay';
+        delete process.env.PAYMENT_API_KEY;
+        process.env.PAYMENT_API_SECRET = 'sk_live_test';
+        process.env.PAYMENT_WEBHOOK_SECRET = 'whsec_test';
+        resetPaymentConfig();
+
+        expect(getPaymentConfig()).toMatchObject({
+          provider: 'fedapay',
+          apiKey: '',
+          apiSecret: 'sk_live_test',
+          webhookSecret: 'whsec_test',
+        });
+
+        delete process.env.PAYMENT_WEBHOOK_SECRET;
+        resetPaymentConfig();
+        expect(() => getPaymentConfig()).toThrow('PAYMENT_WEBHOOK_SECRET');
+      } finally {
+        for (const [key, value] of Object.entries(originalEnv)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+        resetPaymentConfig();
+      }
+    });
+
     it('loads KKiaPay credentials without exposing private keys as the public key', async () => {
       process.env.PAYMENT_PROVIDER = 'kkiapay';
       process.env.KKIAPAY_PUBLIC_KEY = 'public-test';

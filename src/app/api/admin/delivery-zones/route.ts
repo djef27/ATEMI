@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth-helpers';
 import { deliveryZoneCreateSchema } from '@/lib/validations';
 import { normalizeCity, isSupportedCountry, isUndefinedColumnError } from '@/lib/delivery-zones';
+import { isGeographicCountry } from '@/lib/geography-data';
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/delivery-zones — lister les zones de livraison
@@ -15,7 +16,7 @@ export const GET = withAdminAuth(async (request, { supabase }) => {
   const city = url.searchParams.get('city');
   const active = url.searchParams.get('active');
 
-  if (!isSupportedCountry(country)) {
+  if (!isSupportedCountry(country) || !isGeographicCountry(country)) {
     return NextResponse.json({ success: false, error: 'Pays non pris en charge' }, { status: 400 });
   }
 
@@ -84,7 +85,7 @@ export const POST = withAdminAuth(async (request, { supabase }) => {
 
   const { country, city, zone_name, delivery_fee, is_available } = parsed.data;
 
-  if (!isSupportedCountry(country)) {
+  if (!isSupportedCountry(country) || !isGeographicCountry(country)) {
     return NextResponse.json(
       { success: false, error: 'Pays non pris en charge' },
       { status: 400 }
@@ -93,26 +94,30 @@ export const POST = withAdminAuth(async (request, { supabase }) => {
 
   const cityNormalized = normalizeCity(city);
   const trimmedZoneName = zone_name.trim();
+  const zoneNameNormalized = normalizeCity(trimmedZoneName);
 
-  // Détection de doublon (ville normalisée + nom de zone).
-  // city_normalized n'existe qu'après la migration 20260924000000 : on tolère son
-  // absence au lieu de refuser toute création.
+  // The normalized columns are added by the duplicate-cleanup migration.
+  // Keep the in-memory fallback for deployments not migrated yet.
   const duplicateQuery = () =>
     supabase
       .from('delivery_zones')
-      .select('id, city')
-      .eq('country', country)
-      .eq('zone_name', trimmedZoneName);
+      .select('id, city, zone_name')
+      .eq('country', country);
 
-  const normalizedLookup = await duplicateQuery().eq('city_normalized', cityNormalized);
-  let duplicates: Array<{ id: string; city: string }> = normalizedLookup.data || [];
+  const normalizedLookup = await duplicateQuery()
+    .eq('city_name_normalized', cityNormalized)
+    .eq('zone_name_normalized', zoneNameNormalized);
+  let duplicates: Array<{ id: string; city: string; zone_name: string }> = normalizedLookup.data || [];
 
   if (normalizedLookup.error && isUndefinedColumnError(normalizedLookup.error)) {
     const all = await duplicateQuery();
     if (all.error) {
       return NextResponse.json({ success: false, error: 'Erreur lors du chargement' }, { status: 500 });
     }
-    duplicates = (all.data || []).filter((z) => normalizeCity(String(z.city)) === cityNormalized);
+    duplicates = (all.data || []).filter((z) =>
+      normalizeCity(String(z.city)) === cityNormalized &&
+      normalizeCity(String(z.zone_name)) === zoneNameNormalized
+    );
   } else if (normalizedLookup.error) {
     return NextResponse.json({ success: false, error: 'Erreur lors du chargement' }, { status: 500 });
   }
@@ -138,6 +143,12 @@ export const POST = withAdminAuth(async (request, { supabase }) => {
     .single();
 
   if (insertError) {
+    if (insertError.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Cette ville contient déjà une zone identique' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ success: false, error: 'Erreur lors de la création' }, { status: 500 });
   }
 

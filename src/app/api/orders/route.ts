@@ -4,8 +4,10 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { sendEmail, orderConfirmationEmail } from '@/lib/email';
 import { z } from 'zod';
+import { checkoutCustomerFieldsSchema } from '@/lib/validations';
 import { getPaymentConfig } from '@/lib/payment/config';
-import { isSupportedCountry, normalizeCity, isUndefinedColumnError } from '@/lib/delivery-zones';
+import { normalizeCity } from '@/lib/delivery-zones';
+import { isGeographicCountry } from '@/lib/geography-data';
 import { getOrderCreationError } from '@/lib/order-errors';
 import {
   checkIdempotencyKey,
@@ -31,22 +33,19 @@ import { getClientIp } from '@/lib/request';
  */
 
 const orderItemSchema = z.object({
-  product_id: z.string().uuid(),
-  quantity: z.number().int().min(1).max(100),
+  product_id: z.string({ invalid_type_error: 'Identifiant de produit invalide.' }).uuid('Identifiant de produit invalide.'),
+  quantity: z.number({ invalid_type_error: 'Quantité invalide.' }).int('Quantité invalide.').min(1, 'Quantité minimale : 1.').max(100, 'Quantité maximale : 100.'),
 });
 
-const createOrderSchema = z.object({
-  customer_name: z.string().min(1, 'Nom requis').max(200),
-  customer_phone: z.string().min(1, 'Téléphone requis').max(20),
-  customer_email: z.string().email('Email invalide').max(200).nullable().optional().or(z.literal('')),
-  customer_whatsapp: z.string().max(20).nullable().optional(),
-  delivery_address: z.string().max(500).nullable().optional(),
-  delivery_city: z.string().max(100).nullable().optional(),
-  delivery_zone_id: z.string().uuid().nullable().optional(),
-  delivery_required: z.boolean().default(true),
-  country: z.enum(['BJ', 'CI', 'TG']).default('BJ'),
-  customer_notes: z.string().max(500).nullable().optional(),
-  items: z.array(orderItemSchema).min(1, 'Panier vide').max(20, 'Trop d\'articles'),
+const createOrderSchema = checkoutCustomerFieldsSchema.extend({
+  delivery_zone_id: z.string({ invalid_type_error: 'Zone de livraison invalide.' }).uuid('Zone de livraison invalide.').nullable().optional(),
+  delivery_required: z.boolean({ invalid_type_error: 'Mode de livraison invalide.' }).default(true),
+  country: z.string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{2}$/, 'Veuillez choisir un pays valide.'))
+    .default('BJ'),
+  items: z.array(orderItemSchema, { invalid_type_error: 'Le panier est invalide.' }).min(1, 'Panier vide').max(20, 'Trop d\'articles'),
 });
 
 export async function POST(request: NextRequest) {
@@ -72,66 +71,69 @@ export async function POST(request: NextRequest) {
     const parsed = createOrderSchema.safeParse(body);
 
     if (!parsed.success) {
-      const firstError = parsed.error.issues[0]?.message || 'Données invalides';
+      const issue = parsed.error.issues[0];
+      const firstError = issue?.message || 'Données invalides';
       return NextResponse.json(
-        { success: false, error: firstError },
+        {
+          success: false,
+          error: firstError,
+          field: typeof issue?.path[0] === 'string' ? issue.path[0] : undefined,
+        },
         { status: 400 }
       );
     }
 
     const data = parsed.data;
+    let deliveryZoneId = data.delivery_zone_id || null;
+
+    if (!isGeographicCountry(data.country)) {
+      return NextResponse.json(
+        { success: false, error: 'Veuillez choisir un pays valide.', field: 'country' },
+        { status: 400 }
+      );
+    }
 
     // 3. Validate delivery fields based on delivery_required
     if (data.delivery_required) {
       if (!data.delivery_address || data.delivery_address.trim() === '') {
         return NextResponse.json(
-          { success: false, error: 'Adresse de livraison requise' },
+          { success: false, error: 'Adresse de livraison requise', field: 'delivery_address' },
           { status: 400 }
         );
       }
       if (!data.delivery_city || data.delivery_city.trim() === '') {
         return NextResponse.json(
-          { success: false, error: 'Ville de livraison requise' },
+          { success: false, error: 'Ville de livraison requise', field: 'delivery_city' },
           { status: 400 }
         );
       }
 
       const normalizedCity = data.delivery_city.trim();
       const country = data.country;
-      if (!isSupportedCountry(country)) {
-        return NextResponse.json(
-          { success: false, error: 'Pays de livraison non pris en charge' },
-          { status: 400 }
-        );
-      }
       const supabase = createAdminSupabaseClient();
-      const zoneQuery = () => supabase
+      const { data: availableZones, error: zoneError } = await supabase
         .from('delivery_zones')
         .select('id, city, zone_name, delivery_fee')
         .eq('country', country)
         .eq('is_active', true)
         .eq('is_available', true);
 
-      let { data: zoneRows, error: zoneError } = await zoneQuery()
-        .eq('city_normalized', normalizeCity(normalizedCity));
-
-      if (zoneError && isUndefinedColumnError(zoneError)) {
-        const fallback = await zoneQuery();
-        zoneError = fallback.error;
-        zoneRows = (fallback.data || []).filter(
-          (zone) => normalizeCity(zone.city) === normalizeCity(normalizedCity)
-        );
-      }
-
       if (zoneError) {
         console.error('[ORDER_DELIVERY_ZONES_ERROR]', zoneError.message, zoneError.code);
         return NextResponse.json(
           { success: false, error: 'Impossible de vérifier la zone de livraison' },
-          { status: 400 }
+          { status: 503 }
         );
       }
 
-      if (!zoneRows || zoneRows.length === 0) {
+      // The country has a small, bounded set of zones. Normalize their city
+      // names in JavaScript so checkout validation matches the public zone API
+      // even if the generated city_normalized column is stale or unavailable.
+      const zoneRows = (availableZones || []).filter(
+        (zone) => normalizeCity(zone.city) === normalizeCity(normalizedCity)
+      );
+
+      if (zoneRows.length === 0) {
         return NextResponse.json(
           { success: false, error: 'Aucune zone de livraison disponible pour cette ville. Modifiez la ville ou choisissez le retrait.' },
           { status: 400 }
@@ -145,7 +147,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!data.delivery_zone_id && zoneRows.length > 1) {
+      if (!deliveryZoneId && zoneRows.length === 1) {
+        deliveryZoneId = zoneRows[0].id;
+      }
+
+      if (!deliveryZoneId) {
         return NextResponse.json(
           { success: false, error: 'Veuillez sélectionner une zone de livraison' },
           { status: 400 }
@@ -213,7 +219,7 @@ export async function POST(request: NextRequest) {
       p_delivery_city: data.delivery_city?.trim() || null,
       p_items: data.items,
       p_customer_whatsapp: data.customer_whatsapp?.trim() || null,
-      p_delivery_zone_id: data.delivery_zone_id || null,
+      p_delivery_zone_id: deliveryZoneId,
       p_delivery_required: data.delivery_required,
       p_customer_notes: data.customer_notes?.trim() || null,
       p_customer_id: user?.id || null,

@@ -318,6 +318,7 @@ async function SimilarProducts({
         .from('product_images')
         .select('product_id, image_url')
         .eq('is_primary', true)
+        .eq('media_type', 'image')
         .in('product_id', ids);
 
       const imageMap = new Map<string, string>();

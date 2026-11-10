@@ -194,7 +194,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     try {
       const { data } = await supabase
         .from('product_images')
-        .select('product_id, image_url, is_primary, sort_order')
+        .select('product_id, image_url, is_primary, sort_order, media_type')
+        .eq('media_type', 'image')
         .in('product_id', productIds);
       return data;
     } catch {
@@ -231,6 +232,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   if (mediaRows) {
     const grouped = new Map<string, Array<{ product_id: string; image_url: string; is_primary: boolean; sort_order: number }>>();
     for (const row of mediaRows) {
+      if (row.media_type !== 'image') continue;
       const list = grouped.get(row.product_id) || [];
       list.push(row);
       grouped.set(row.product_id, list);

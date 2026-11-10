@@ -11,8 +11,11 @@
 --
 -- Les IDs existants sont conservés (références orders.delivery_zone_id).
 
--- 1. Normaliser le pays (les anciennes lignes utilisaient 'Bénin')
-UPDATE public.delivery_zones SET country = 'BJ' WHERE country <> 'BJ';
+-- 1. Normaliser uniquement les anciens libellés du Bénin. Ne pas convertir
+--    les zones des autres pays en BJ.
+UPDATE public.delivery_zones
+SET country = 'BJ'
+WHERE lower(btrim(country)) IN ('bénin', 'benin');
 
 -- 2. Dédupliquer (country, city, zone_name) en gardant le plus petit id
 DELETE FROM public.delivery_zones a

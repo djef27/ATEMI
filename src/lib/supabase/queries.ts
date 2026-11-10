@@ -39,17 +39,18 @@ async function fetchPrimaryImages(productIds: string[]): Promise<Map<string, str
   try {
     const { data: mediaRows } = await supabase
       .from('product_images')
-      .select('product_id, image_url, is_primary, sort_order')
+      .select('product_id, image_url, is_primary, sort_order, media_type')
+      .eq('media_type', 'image')
       .in('product_id', productIds);
 
     if (mediaRows) {
       for (const row of mediaRows) {
-        if (row.is_primary && !images.has(row.product_id)) {
+        if (row.media_type === 'image' && row.is_primary && !images.has(row.product_id)) {
           images.set(row.product_id, row.image_url);
         }
       }
       for (const row of mediaRows) {
-        if (!images.has(row.product_id)) {
+        if (row.media_type === 'image' && !images.has(row.product_id)) {
           images.set(row.product_id, row.image_url);
         }
       }

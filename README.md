@@ -1,6 +1,6 @@
 # E-commerce boutique Bénin
 
-Plateforme e-commerce multi-vendeurs pour le Bénin. Next.js 14 + Supabase + TypeScript + Tailwind CSS.
+Plateforme e-commerce multi-vendeurs pour le Bénin. Next.js 15 + Supabase + TypeScript + Tailwind CSS.
 
 ## Installation
 
@@ -48,6 +48,10 @@ cp .env.example .env.local
 | `KKIAPAY_PRIVATE_KEY` | Clé privée KKiaPay (vérification serveur) | Serveur |
 | `KKIAPAY_SECRET_KEY` | Clé secrète KKiaPay (vérification serveur) | Serveur |
 | `KKIAPAY_SANDBOX` | `true` avec les clés Sandbox, `false` avec les clés Live | Serveur |
+| `SASPay_API_KEY` | Clé API SasPay | Serveur |
+| `SASPay_WEBHOOK_SECRET` | Secret de vérification des webhooks SasPay | Serveur |
+| `SASPay_BASE_URL` | URL de l'API SasPay (facultatif) | Serveur |
+| `SASPay_ENVIRONMENT` | `sandbox` ou `live` | Serveur |
 | `UPSTASH_REDIS_REST_URL` | URL Upstash Redis (rate limiting production) | Serveur |
 | `UPSTASH_REDIS_REST_TOKEN` | Token Upstash Redis | Serveur |
 | `BREVO_API_KEY` | Clé API Brevo (emails transactionnels) | Serveur |
@@ -97,11 +101,11 @@ Renseigner `WHATSAPP_API_TOKEN` et `WHATSAPP_PROVIDER` dans `.env.local` pour ac
 
 ## Configuration paiement
 
-Pour KKiaPay, renseigner `PAYMENT_PROVIDER=kkiapay`, les trois clés `KKIAPAY_*` et `KKIAPAY_SANDBOX=true` pour le Sandbox. Le widget est chargé après création de la commande, puis chaque transaction est vérifiée côté serveur avec le SDK officiel avant confirmation. Pour CinetPay, renseigner `PAYMENT_PROVIDER=cinetpay`, `CINETPAY_API_KEY`, `CINETPAY_SITE_ID` et `CINETPAY_SECRET_KEY` ; le webhook `/api/payment/webhook` vérifie chaque transaction avec l'API CinetPay. Les moyens disponibles par pays sont exposés par `GET /api/payment/methods`. FedaPay reste disponible via `PAYMENT_PROVIDER=fedapay`.
+Pour KKiaPay, renseigner `PAYMENT_PROVIDER=kkiapay`, les trois clés `KKIAPAY_*` et `KKIAPAY_SANDBOX=true` pour le Sandbox. Le widget est chargé après création de la commande, puis chaque transaction est vérifiée côté serveur avec le SDK officiel avant confirmation. Pour CinetPay, renseigner `PAYMENT_PROVIDER=cinetpay`, `CINETPAY_API_KEY`, `CINETPAY_SITE_ID` et `CINETPAY_SECRET_KEY` ; le webhook `/api/payment/webhook` vérifie chaque transaction avec l'API CinetPay. SasPay est disponible via `PAYMENT_PROVIDER=saspay`, `SASPay_API_KEY` et `SASPay_WEBHOOK_SECRET`. Les moyens disponibles par pays sont exposés par `GET /api/payment/methods`. FedaPay reste disponible via `PAYMENT_PROVIDER=fedapay`.
 
 ## Architecture
 
-- **Frontend** : Next.js 14 (App Router), React 18, Tailwind CSS
+- **Frontend** : Next.js 15 (App Router), React 18, Tailwind CSS
 - **Backend** : Supabase (PostgreSQL, Auth, RLS (Row Level Security))
 - **State** : Zustand (panier persisté en localStorage)
 - **Types** : TypeScript strict

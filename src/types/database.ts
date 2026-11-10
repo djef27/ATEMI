@@ -139,8 +139,8 @@ export interface Order {
   customer_phone: string;
   customer_whatsapp: string | null;
   customer_email: string | null;
-  delivery_address: string;
-  delivery_city: string;
+  delivery_address: string | null;
+  delivery_city: string | null;
   delivery_zone_id: string | null;
   delivery_required: boolean;
   subtotal: number;
@@ -299,17 +299,18 @@ export interface Database {
       get_my_driver_id: { Args: never; Returns: string | null };
       create_order: {
         Args: {
-          p_customer_id?: string;
+          p_customer_id?: string | null;
           p_customer_name: string;
           p_customer_phone: string;
-          p_customer_whatsapp?: string;
-          p_delivery_address: string;
-          p_delivery_city: string;
-          p_delivery_zone_id?: string;
+          p_customer_whatsapp?: string | null;
+          p_delivery_address?: string | null;
+          p_delivery_city?: string | null;
+          p_delivery_zone_id?: string | null;
           p_delivery_required?: boolean;
-          p_customer_notes?: string;
-          p_customer_email?: string;
-          p_provider?: string;
+          p_customer_notes?: string | null;
+          p_items: Array<{ product_id: string; quantity: number }>;
+          p_customer_email?: string | null;
+          p_provider?: string | null;
         };
         Returns: {
           success: boolean;

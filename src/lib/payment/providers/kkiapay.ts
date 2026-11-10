@@ -45,7 +45,11 @@ export class KKiaPayPaymentProvider implements PaymentProvider {
       : '';
     const transactionId = typeof rawTransaction.transactionId === 'string'
       ? rawTransaction.transactionId
-      : '';
+      : typeof rawTransaction.transaction_id === 'string'
+        ? rawTransaction.transaction_id
+        : typeof rawTransaction.id === 'string'
+          ? rawTransaction.id
+          : '';
 
     if (!status) {
       throw new Error('KKiaPay a retourné un statut de transaction invalide');
@@ -55,7 +59,7 @@ export class KKiaPayPaymentProvider implements PaymentProvider {
     }
 
     const amount = Number(rawTransaction.amount);
-    if (!Number.isFinite(amount)) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('KKiaPay a retourné un montant invalide');
     }
 
@@ -69,7 +73,10 @@ export class KKiaPayPaymentProvider implements PaymentProvider {
       : typeof rawTransaction.source === 'string'
         ? rawTransaction.source
         : 'kkiapay';
-    const isDebit = rawTransaction.type === 'DEBIT';
+    const transactionType = typeof rawTransaction.type === 'string'
+      ? rawTransaction.type.toUpperCase()
+      : '';
+    const isDebit = !transactionType || transactionType === 'DEBIT';
 
     return {
       providerTransactionId,

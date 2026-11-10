@@ -10,13 +10,9 @@ export function normalizeCity(input: string): string {
     .trim();
 }
 
-/** Listes canoniques de villes par pays (affichage + suggestion du checkout). */
-export const DELIVERY_COUNTRIES = ['BJ', 'CI', 'TG'] as const;
-
-export type DeliveryCountry = (typeof DELIVERY_COUNTRIES)[number];
-
-export function isSupportedCountry(country: string | null): country is DeliveryCountry {
-  return !!country && (DELIVERY_COUNTRIES as readonly string[]).includes(country);
+/** Syntactic guard; server routes also verify codes against the ISO dataset. */
+export function isSupportedCountry(country: string | null): country is string {
+  return !!country && /^[A-Z]{2}$/.test(country);
 }
 
 /**
@@ -38,20 +34,21 @@ export function isUndefinedColumnError(error: { code?: string } | null | undefin
 export function groupCitiesByName(
   rows: Array<{ city: string; delivery_fee: number | string }>
 ): Array<{ name: string; min_fee: number; zones_count: number }> {
-  const byCity = new Map<string, { min_fee: number; zones_count: number }>();
+  const byCity = new Map<string, { name: string; min_fee: number; zones_count: number }>();
 
   for (const row of rows) {
     const fee = Number(row.delivery_fee);
-    const current = byCity.get(row.city);
+    const key = normalizeCity(row.city);
+    const current = byCity.get(key);
     if (current) {
       current.min_fee = Math.min(current.min_fee, fee);
       current.zones_count += 1;
     } else {
-      byCity.set(row.city, { min_fee: fee, zones_count: 1 });
+      byCity.set(key, { name: row.city, min_fee: fee, zones_count: 1 });
     }
   }
 
-  return Array.from(byCity.entries())
-    .map(([name, meta]) => ({ name, ...meta }))
+  return Array.from(byCity.values())
+    .map(({ name, min_fee, zones_count }) => ({ name, min_fee, zones_count }))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }

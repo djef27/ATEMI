@@ -6,6 +6,12 @@ import { getPaymentConfig } from '@/lib/payment/config';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { rateLimitResponse } from '@/lib/api-rate-limit';
 import { createCinetPayPayment } from '@/lib/payment/providers/cinetpay';
+import {
+  createFedaPayPaymentUrl,
+  createFedaPayTransaction,
+  getFedaPayBaseUrl,
+  getFedaPayTransaction,
+} from '@/lib/payment/providers/fedapay-api';
 import { getPaymentMethods } from '@/lib/payment/countries';
 import { isOrderStatusTerminal } from '@/lib/order-status';
 import { getClientIp } from '@/lib/request';
@@ -28,12 +34,6 @@ import type { OrderStatus } from '@/types';
  * Reuses an existing payment_url if one was already created (idempotent, avoids
  * stacking provider transactions on page reload).
  */
-
-function getFedaPayBaseUrl(apiSecret: string): string {
-  return apiSecret.startsWith('sk_live_')
-    ? 'https://api.fedapay.com'
-    : 'https://sandbox-api.fedapay.com';
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -222,13 +222,13 @@ export async function POST(request: NextRequest) {
       const transactionId = `ATEMI-${order.order_number}-${randomUUID().replace(/-/g, '').slice(0, 10)}`;
 
       const { SasPayPaymentProvider } = await import('@/lib/payment/providers/saspay');
-      const provider = new SasPayPaymentProvider({
+      const saspayProvider = new SasPayPaymentProvider({
         apiKey: config.apiKey,
         webhookSecret: config.webhookSecret,
         baseUrl: config.baseUrl,
         environment: config.environment,
       });
-      const { checkoutUrl, reference } = await provider.createCheckoutSession({
+      const { checkoutUrl, reference } = await saspayProvider.createCheckoutSession({
         amount: payment.amount,
         description: `Acompte commande ${order.order_number}`,
         customerEmail: order.customer_email || `${order.order_number}@atemi.local`,
@@ -303,23 +303,24 @@ export async function POST(request: NextRequest) {
       if (config.provider === 'fedapay') {
         const baseUrl = getFedaPayBaseUrl(config.apiSecret);
         try {
-          const checkResponse = await fetch(
-            `${baseUrl}/v1/transactions/${payment.transaction_reference}`,
-            { headers: { Authorization: `Bearer ${config.apiSecret}` } }
-          );
-          if (!checkResponse.ok) {
+          const providerTransactionId = payment.provider_transaction_id ||
+            (/^\d+$/.test(payment.transaction_reference) ? payment.transaction_reference : '');
+          if (!providerTransactionId) {
             if (payment.payment_url) {
               return NextResponse.json({ success: true, payment_url: payment.payment_url });
             }
             return NextResponse.json(
-              { success: false, error: 'Impossible de vérifier la transaction existante chez FedaPay' },
+              { success: false, error: 'Identifiant de transaction FedaPay introuvable' },
               { status: 502 }
             );
           }
 
-          const checkData = await checkResponse.json();
-          const tx = checkData['v1/transaction'];
-          const providerStatus = String(tx?.status || '').toLowerCase();
+          const transaction = await getFedaPayTransaction(
+            providerTransactionId,
+            config.apiSecret,
+            baseUrl
+          );
+          const providerStatus = String(transaction.status || '').toLowerCase();
           if (['declined', 'canceled', 'cancelled', 'failed'].includes(providerStatus)) {
             const { error: clearError } = await supabase
               .from('payments')
@@ -337,16 +338,21 @@ export async function POST(request: NextRequest) {
                 { status: 500 }
               );
             }
-          } else if (tx?.payment_url || payment.payment_url) {
-            return NextResponse.json({
-              success: true,
-              payment_url: tx?.payment_url || payment.payment_url,
-            });
           } else {
-            return NextResponse.json(
-              { success: false, error: 'La transaction FedaPay existe sans URL de paiement' },
-              { status: 502 }
-            );
+            const paymentUrl = transaction.paymentUrl || payment.payment_url ||
+              await createFedaPayPaymentUrl(transaction.id, config.apiSecret, baseUrl);
+            const { error: urlError } = await supabase
+              .from('payments')
+              .update({ payment_url: paymentUrl, updated_at: new Date().toISOString() })
+              .eq('id', payment.id);
+            if (urlError) {
+              console.error('[PAYMENT_INITIATE] FedaPay payment URL update failed:', urlError.message);
+              return NextResponse.json(
+                { success: false, error: 'Impossible d’enregistrer le lien de paiement FedaPay' },
+                { status: 500 }
+              );
+            }
+            return NextResponse.json({ success: true, payment_url: paymentUrl });
           }
         } catch (error) {
           console.error('[PAYMENT_INITIATE] FedaPay transaction lookup failed:', error);
@@ -479,15 +485,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let fedaResponse: Response;
+    let transaction;
     try {
-      fedaResponse = await fetch(`${baseUrl}/v1/transactions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${config.apiSecret}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      transaction = await createFedaPayTransaction({
+        apiSecret: config.apiSecret,
+        baseUrl,
+        body: {
           description: `Acompte commande ${order.order_number}`,
           amount: payment.amount,
           currency: { iso: 'XOF' },
@@ -498,20 +501,14 @@ export async function POST(request: NextRequest) {
             email,
             phone_number: { number: phone, country: 'bj' },
           },
-        }),
+        },
       });
-    } catch {
+    } catch (error) {
+      console.error('[PAYMENT_INITIATE] FedaPay transaction creation failed:', error);
       return NextResponse.json({ success: false, error: 'Impossible de contacter le fournisseur de paiement' }, { status: 502 });
     }
 
-    if (!fedaResponse.ok) {
-      return NextResponse.json({ success: false, error: 'Erreur lors de la creation du paiement' }, { status: 502 });
-    }
-
-    const fedaData = await fedaResponse.json();
-    const transaction = fedaData['v1/transaction'];
-
-    if (!transaction?.reference || !transaction?.payment_url) {
+    if (!transaction?.reference || !transaction?.id) {
       return NextResponse.json({ success: false, error: 'Reponse invalide du fournisseur de paiement' }, { status: 502 });
     }
 
@@ -520,8 +517,8 @@ export async function POST(request: NextRequest) {
       .update({
         provider: 'fedapay',
         transaction_reference: transaction.reference,
-        provider_transaction_id: transaction.id ? String(transaction.id) : transaction.reference,
-        payment_url: transaction.payment_url,
+        provider_transaction_id: String(transaction.id),
+        payment_url: null,
         country: country?.toUpperCase() || null,
         payment_method: payment_method || 'mobile_money',
         updated_at: new Date().toISOString(),
@@ -532,12 +529,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Erreur lors de l'enregistrement du paiement" }, { status: 500 });
     }
 
+    let paymentUrl: string;
+    try {
+      paymentUrl = await createFedaPayPaymentUrl(
+        String(transaction.id),
+        config.apiSecret,
+        baseUrl
+      );
+    } catch (error) {
+      console.error('[PAYMENT_INITIATE] FedaPay payment link creation failed:', error);
+      return NextResponse.json(
+        { success: false, error: 'Impossible de créer le lien de paiement FedaPay' },
+        { status: 502 }
+      );
+    }
+
+    const { error: urlUpdateError } = await supabase
+      .from('payments')
+      .update({ payment_url: paymentUrl, updated_at: new Date().toISOString() })
+      .eq('id', payment.id);
+    if (urlUpdateError) {
+      console.error('[PAYMENT_INITIATE] FedaPay payment URL update failed:', urlUpdateError.message);
+      return NextResponse.json(
+        { success: false, error: 'Impossible d’enregistrer le lien de paiement FedaPay' },
+        { status: 500 }
+      );
+    }
+
     await storeIdempotencyResponse(idempotencyKey, 200, {
       success: true,
-      payment_url: transaction.payment_url,
+      payment_url: paymentUrl,
     });
 
-    return NextResponse.json({ success: true, payment_url: transaction.payment_url });
+    return NextResponse.json({ success: true, payment_url: paymentUrl });
   } catch {
     return NextResponse.json({ success: false, error: 'Erreur interne du serveur' }, { status: 500 });
   }

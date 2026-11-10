@@ -6,13 +6,15 @@ import type { DeliveryZone } from '@/types';
 import type { DeliveryZoneCreateInput, DeliveryZoneUpdateInput } from '@/lib/validations';
 import { useToast } from '@/components/toast-provider';
 import { formatPrice } from '@/lib/utils';
+import { groupCountriesByContinent } from '@/lib/geography';
+import { useGeographyCountries } from '@/hooks/use-geography';
 
 interface CityGroup {
   city: string;
   zones: DeliveryZone[];
 }
 
-const COUNTRY = 'BJ';
+const DEFAULT_COUNTRY = 'BJ';
 
 function groupByCity(zones: DeliveryZone[]): CityGroup[] {
   const groups = new Map<string, DeliveryZone[]>();
@@ -26,21 +28,26 @@ function groupByCity(zones: DeliveryZone[]): CityGroup[] {
     .sort((a, b) => a.city.localeCompare(b.city, 'fr'));
 }
 
-const emptyForm: DeliveryZoneCreateInput = {
-  country: COUNTRY,
-  city: '',
-  zone_name: '',
-  delivery_fee: 0,
-  is_available: true,
-};
+function emptyForm(country: string): DeliveryZoneCreateInput {
+  return {
+    country,
+    city: '',
+    zone_name: '',
+    delivery_fee: 0,
+    is_available: true,
+  };
+}
 
 export default function AdminDeliveryZonesPage() {
   const { showToast } = useToast();
+  const countryCatalog = useGeographyCountries();
+  const countryGroups = groupCountriesByContinent(countryCatalog.data);
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<DeliveryZoneCreateInput>(emptyForm);
+  const [form, setForm] = useState<DeliveryZoneCreateInput>(() => emptyForm(DEFAULT_COUNTRY));
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [editing, setEditing] = useState<DeliveryZone | null>(null);
@@ -51,9 +58,10 @@ export default function AdminDeliveryZonesPage() {
   const [search, setSearch] = useState('');
 
   const fetchZones = useCallback(async () => {
+    setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`/api/admin/delivery-zones?country=${COUNTRY}`);
+      const res = await fetch(`/api/admin/delivery-zones?country=${country}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -69,7 +77,7 @@ export default function AdminDeliveryZonesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [country]);
 
   useEffect(() => {
     fetchZones();
@@ -103,7 +111,7 @@ export default function AdminDeliveryZonesPage() {
 
       showToast('Zone ajoutée');
       setShowCreate(false);
-      setForm(emptyForm);
+      setForm(emptyForm(country));
       await fetchZones();
     } catch {
       setFormError('Erreur réseau');
@@ -219,13 +227,45 @@ export default function AdminDeliveryZonesPage() {
             {zones.length} zones · {existingCities.length} villes · {activeCount} actives
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-900 text-white text-sm font-medium rounded-lg hover:bg-primary-800 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nouvelle zone
-        </button>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="delivery-country" className="block text-xs font-medium text-gray-600 mb-1">Pays</label>
+            <select id="delivery-country" value={country} disabled={countryCatalog.loading || Boolean(countryCatalog.error)} onChange={(event) => {
+              const nextCountry = event.target.value;
+              setCountry(nextCountry);
+              setZones([]);
+              setLoading(true);
+              setLoadError(null);
+              setSearch('');
+              setForm((current) => ({ ...current, country: nextCountry, city: '' }));
+            }} className="px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              {countryCatalog.loading && <option value={country}>Chargement des pays…</option>}
+              {countryGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.countries.map((locationCountry) => (
+                    <option key={locationCountry.code} value={locationCountry.code}>{locationCountry.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {countryCatalog.error && (
+              <p role="alert" className="mt-1 max-w-xs text-xs text-rose-600">
+                {countryCatalog.error}{' '}
+                <button type="button" onClick={countryCatalog.retry} className="underline">Réessayer</button>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setForm(emptyForm(country));
+              setShowCreate(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-900 text-white text-sm font-medium rounded-lg hover:bg-primary-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nouvelle zone
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-6 max-w-sm">
@@ -347,7 +387,9 @@ export default function AdminDeliveryZonesPage() {
           <div className="fixed inset-0 bg-black/50" onClick={() => !formLoading && setShowCreate(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-primary-100">
-              <h2 className="text-lg font-semibold text-gray-900">Nouvelle zone de livraison</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Nouvelle zone de livraison — {countryCatalog.data.find((item) => item.code === country)?.name || country}
+              </h2>
               <button onClick={() => !formLoading && setShowCreate(false)} className="p-1 text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>

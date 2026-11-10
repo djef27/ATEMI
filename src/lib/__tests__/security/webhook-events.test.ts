@@ -55,10 +55,28 @@ describe('parseEvent', () => {
     expect(event).toMatchObject({ id: 'evt_1', type: 'transaction.created', data: { reference: 'FDP-1' } });
   });
 
+  it('parses the official FedaPay object-shaped entity', () => {
+    const event = parseEvent(
+      JSON.stringify({
+        id: 123,
+        type: 'transaction.approved',
+        entity: { id: 456, reference: 'FDP-456', amount: 5000, currency_id: 1 },
+      }),
+      'fedapay'
+    );
+    expect(event).toMatchObject({
+      id: '123',
+      type: 'transaction.approved',
+      data: { id: 456, reference: 'FDP-456', amount: 5000 },
+    });
+  });
+
   it('rejects a FedaPay envelope with non-JSON entity', () => {
     expect(
       parseEvent(JSON.stringify({ id: 'evt_1', type: 'x', entity: 'not-json' }), 'fedapay')
     ).toBeNull();
+    expect(parseEvent(JSON.stringify({ id: 'evt_1', type: 'x', entity: [] }), 'fedapay')).toBeNull();
+    expect(parseEvent('null', 'fedapay')).toBeNull();
   });
 
   it('parses a generic Stripe/Paystack envelope (data.object)', () => {

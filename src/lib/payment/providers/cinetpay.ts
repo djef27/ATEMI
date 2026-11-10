@@ -72,7 +72,7 @@ export class CinetPayPaymentProvider implements PaymentProvider {
       headers: { 'Content-Type': 'application/json' },
       signal: createTimeoutSignal(CINETPAY_TIMEOUT_MS),
       body: JSON.stringify({
-        apikey: this.config.apiKey,
+        apiKey: this.config.apiKey,
         site_id: this.config.siteId,
         transaction_id: providerTransactionId,
       }),
@@ -128,8 +128,8 @@ export async function createCinetPayPayment(input: {
     headers: { 'Content-Type': 'application/json' },
     signal: createTimeoutSignal(CINETPAY_TIMEOUT_MS),
     body: JSON.stringify({
-      apikey: input.config.apiKey,
-      site_id: input.config.siteId,
+      apiKey: input.config.apiKey,
+      siteId: input.config.siteId,
       transaction_id: input.transactionId,
       amount: input.amount,
       currency: 'XOF',

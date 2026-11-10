@@ -9,6 +9,7 @@ export interface PhoneCountry {
   callingCode: string;    // International calling code without + (e.g., '229')
   flag: string;           // Emoji flag
   mask?: string;          // Optional input mask pattern
+  internationalName?: string;
 }
 
 export interface PhoneInputProps {
@@ -151,7 +152,9 @@ export default function PhoneInput({
     if (!searchQuery) return countries;
     const query = searchQuery.toLowerCase();
     return countries.filter(
-      (c) => c.name.toLowerCase().includes(query) || c.callingCode.includes(query)
+      (c) => c.name.toLowerCase().includes(query) ||
+        c.internationalName?.toLowerCase().includes(query) ||
+        c.callingCode.includes(query)
     );
   }, [countries, searchQuery]);
 
@@ -201,11 +204,11 @@ export default function PhoneInput({
                 />
                 <div className="absolute left-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-primary-100 py-2 z-50 overflow-hidden">
                   <div className="p-2 border-b border-primary-100">
-                    <label htmlFor="country-search" className="sr-only">Rechercher un pays</label>
+                    <label htmlFor={`${id || 'phone'}-country-search`} className="sr-only">Rechercher un pays</label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
                       <input
-                        id="country-search"
+                        id={`${id || 'phone'}-country-search`}
                         type="search"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -253,9 +256,12 @@ export default function PhoneInput({
           value={displayValue}
           onChange={handlePhoneChange}
           onFocus={(e) => {
-            // Position cursor at end of formatted value
+            const input = e.currentTarget;
+            const cursorPosition = displayValue.length;
             setTimeout(() => {
-              e.currentTarget.setSelectionRange(displayValue.length, displayValue.length);
+              if (input.isConnected) {
+                input.setSelectionRange(cursorPosition, cursorPosition);
+              }
             }, 0);
           }}
           placeholder={placeholder || (activeCountry.mask ? activeCountry.mask.replace(/#/g, '0') : '')}

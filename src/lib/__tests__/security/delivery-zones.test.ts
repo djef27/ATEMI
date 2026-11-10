@@ -1,7 +1,35 @@
+import fs from 'fs';
+import path from 'path';
 import { deliveryZoneCreateSchema, deliveryZoneUpdateSchema } from '@/lib/validations';
 import { normalizeCity, isSupportedCountry } from '@/lib/delivery-zones';
 
 describe('Security: Delivery zones', () => {
+  it('only normalizes legacy Benin country labels in the Benin seed migration', () => {
+    const migration = fs.readFileSync(
+      path.join(process.cwd(), 'supabase/migrations/20260924000000_delivery_zones_benin_v2.sql'),
+      'utf-8'
+    );
+
+    expect(migration).toMatch(
+      /UPDATE public\.delivery_zones\s+SET country = 'BJ'\s+WHERE lower\(btrim\(country\)\) IN \('bénin', 'benin'\)/i
+    );
+    expect(migration).not.toMatch(/WHERE country\s*<>\s*'BJ'/i);
+  });
+
+  it('deduplicates equivalent zones without discarding referenced order zones', () => {
+    const migration = fs.readFileSync(
+      path.join(process.cwd(), 'supabase/migrations/20261108140000_normalize_delivery_zone_duplicates.sql'),
+      'utf-8'
+    );
+
+    expect(migration).toContain('city_name_normalized');
+    expect(migration).toContain('zone_name_normalized');
+    expect(migration).toContain('UPDATE public.orders');
+    expect(migration).toContain('CREATE UNIQUE INDEX');
+    expect(migration).toMatch(/UPDATE public\.orders[\s\S]*DELETE FROM public\.delivery_zones/i);
+    expect(migration).toMatch(/RAISE EXCEPTION[\s\S]*Ambiguous/i);
+  });
+
   describe('deliveryZoneCreateSchema', () => {
     it('accepts a valid zone', () => {
       const result = deliveryZoneCreateSchema.safeParse({
@@ -158,17 +186,20 @@ describe('Security: Delivery zones', () => {
   });
 
   describe('isSupportedCountry', () => {
-    it('accepts BJ, CI, TG', () => {
+    it('accepts ISO-shaped uppercase country codes for geographic validation by API routes', () => {
       expect(isSupportedCountry('BJ')).toBe(true);
       expect(isSupportedCountry('CI')).toBe(true);
       expect(isSupportedCountry('TG')).toBe(true);
+      expect(isSupportedCountry('GH')).toBe(true);
+      expect(isSupportedCountry('SG')).toBe(true);
+      expect(isSupportedCountry('FR')).toBe(true);
     });
 
-    it('rejects unknown or malformed countries', () => {
-      expect(isSupportedCountry('FR')).toBe(false);
+    it('rejects malformed or missing country codes', () => {
       expect(isSupportedCountry('')).toBe(false);
       expect(isSupportedCountry(null)).toBe(false);
       expect(isSupportedCountry('ben')).toBe(false);
+      expect(isSupportedCountry('fr')).toBe(false);
     });
   });
 });

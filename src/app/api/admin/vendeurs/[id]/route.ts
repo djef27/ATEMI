@@ -4,8 +4,20 @@ import { z } from 'zod';
 
 const vendorUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  phone: z.string().max(20).regex(/^\+?[0-9\s\-]*$/).nullable().optional(),
-  whatsapp_number: z.string().max(20).regex(/^\+?[0-9\s\-]*$/).nullable().optional(),
+  phone: z
+    .string()
+    .trim()
+    .max(25)
+    .regex(/^(?:\+?[0-9](?:[0-9 .-]*[0-9])?)?$/)
+    .nullable()
+    .optional(),
+  whatsapp_number: z
+    .string()
+    .trim()
+    .max(25)
+    .regex(/^(?:\+?[0-9](?:[0-9 .-]*[0-9])?)?$/)
+    .nullable()
+    .optional(),
   email: z.string().email().max(200).nullable().optional(),
   address: z.string().max(500).nullable().optional(),
   city: z.string().max(100).optional(),

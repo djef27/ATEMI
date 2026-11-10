@@ -5,7 +5,7 @@
  * Official docs: https://docs.saspay.me/
  *
  * KEY DIFFERENCES FROM OTHER PROVIDERS:
- * - Single secret key passed as `Authorization: Bearer <apiKey>` (NOT apiKey+secret)
+ * - Single secret key passed as `Authorization: Bearer sk_test_...` (NOT apiKey+secret)
  * - Checkout flow uses hosted page (checkout_url), not payment_url
  * - Webhooks use HMAC-SHA256 signature over "timestamp.body"
  *
@@ -22,10 +22,10 @@ import type {
   WebhookVerificationResult,
   WebhookEvent,
 } from '../types';
-import { createAdminSupabaseClient } from '@/lib/supabase/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export interface SasPayConfig {
-  apiKey: string | null;
+  apiKey: string;
   webhookSecret: string;
   baseUrl: string;
   environment: 'sandbox' | 'live';
@@ -90,28 +90,10 @@ function createTimeoutSignal(ms: number): AbortSignal {
   return ac.signal;
 }
 
-/**
- * HMAC-SHA256 over "timestamp.body", hex-encoded.
- * Server-side (Node.js): synchronous crypto.
- * Browser: Web Crypto (async Promise). Callers in the browser must await this.
- */
-function hmacSha256Hex(key: string, message: string): string | Promise<string> {
-  // Server-side (Node.js): synchronous
-  if (typeof globalThis.process !== 'undefined' || typeof require === 'function') {
-    const crypto = require('crypto');
-    const sign = crypto.createHmac('sha256', key);
-    sign.update(message, 'utf8');
-    return sign.digest('hex');
-  }
-  // Browser: Web Crypto (async)
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  const msgData = encoder.encode(message);
-  return crypto.subtle
-    .digest('SHA-256', msgData)
-    .then((buf) => Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join(''));
+function hmacSha256Hex(key: string, message: string): string {
+  const sign = createHmac('sha256', key);
+  sign.update(message, 'utf8');
+  return sign.digest('hex');
 }
 
 export class SasPayPaymentProvider implements PaymentProvider {
@@ -128,7 +110,7 @@ export class SasPayPaymentProvider implements PaymentProvider {
    *   X-Webhook-Event: <event type>
    *
    * Signature = HMAC-SHA256(signing_secret, `${timestamp}.${body}`)
-   * Compare in constant time (when the Node.js Buffer API is available).
+   * Compare in constant time.
    */
   async verifyWebhook(
     payload: string,
@@ -152,8 +134,7 @@ export class SasPayPaymentProvider implements PaymentProvider {
     // Recompute signature over raw body
     let expectedSig: string;
     try {
-      const computed = hmacSha256Hex(this.config.webhookSecret, `${timestamp}.${payload}`);
-      expectedSig = typeof computed === 'string' ? computed : (await computed);
+      expectedSig = hmacSha256Hex(this.config.webhookSecret, `${timestamp}.${payload}`);
     } catch (error) {
       return {
         valid: false,
@@ -162,21 +143,27 @@ export class SasPayPaymentProvider implements PaymentProvider {
       };
     }
 
-    // Constant-time comparison (Node.js Buffer API)
+    // Constant-time comparison
     const sigBytes = Buffer ? Buffer.from(signature) : null;
     const expectedBytes = Buffer.from(expectedSig);
     if (sigBytes && sigBytes.length !== expectedBytes.length) {
       return { valid: false, event: null, error: 'Longueur signature invalide' };
     }
+    // Node.js Buffer comparison
     if (typeof Buffer !== 'undefined') {
-      const cryptoObj = typeof globalThis.process !== 'undefined' || typeof require === 'function' ? require('crypto') : undefined;
-      const cmp = (cryptoObj as { timingSafeEqual?: (a: Buffer, b: Buffer) => boolean })?.timingSafeEqual;
-      if (cmp) {
-        if (!cmp(sigBytes!, expectedBytes)) {
-          return { valid: false, event: null, error: 'Signature invalide' };
+      try {
+        if (sigBytes) {
+          if (!timingSafeEqual(sigBytes, expectedBytes)) {
+            return { valid: false, event: null, error: 'Signature invalide' };
+          }
+        } else {
+          // Fallback: case-insensitive string compare (won't be constant-time)
+          if (signature.toLowerCase() !== expectedSig.toLowerCase()) {
+            return { valid: false, event: null, error: 'Signature invalide' };
+          }
         }
-      } else {
-        // Fallback: case-insensitive string compare (won't be constant-time)
+      } catch {
+        // Fall through to string comparison
         if (signature.toLowerCase() !== expectedSig.toLowerCase()) {
           return { valid: false, event: null, error: 'Signature invalide' };
         }
@@ -259,21 +246,16 @@ export class SasPayPaymentProvider implements PaymentProvider {
       throw new Error(`Erreur SasPay initiation: ${detail}`);
     }
 
-    const responseJson = (await response.json()) as {
-      success?: boolean;
-      data?: SasPayCheckoutSessionResponse;
-      code?: number;
+    const result = (await response.json()) as SasPayCheckoutSessionResponse & {
+      data?: Partial<SasPayCheckoutSessionResponse>;
     };
-
-    const result = responseJson.data || (responseJson as SasPayCheckoutSessionResponse);
-    if (!result.checkout_url || !result.id) {
+    const checkoutUrl = result.checkout_url || result.data?.checkout_url;
+    const reference = result.id || result.data?.id || result.checkout_url?.split('/').pop() || result.data?.checkout_url?.split('/').pop();
+    if (!checkoutUrl || !reference) {
       throw new Error('Réponse SasPay invalide (checkout_url ou id manquant)');
     }
 
-    // The reference for traceability = SasPay transaction id
-    const reference = result.id || result.checkout_url.split('/').pop() || 'unknown';
-
-    return { checkoutUrl: result.checkout_url, reference };
+    return { checkoutUrl, reference };
   }
 
   /**
@@ -355,14 +337,12 @@ export class SasPayPaymentProvider implements PaymentProvider {
   }
 
   async isEventProcessed(eventId: string): Promise<boolean> {
-    // SasPay relies on the webhook route's persistent idempotency store
-    // (pay:evt:{eventId}) to prevent duplicate processing.
+    void eventId;
     return false;
   }
 
   async markEventProcessed(eventId: string): Promise<void> {
-    // Idempotent processing is handled by the webhook route's persistent
-    // idempotency RPC, not by this provider.
+    void eventId;
   }
 
   /**

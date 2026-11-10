@@ -63,7 +63,7 @@ Client → Checkout → POST /api/orders → Order created (pending_payment)
 | Variable | Description | Values |
 |----------|-------------|--------|
 | `PAYMENT_PROVIDER` | Payment provider | `mock`, `cinetpay`, `fedapay`, `kkiapay` |
-| `PAYMENT_API_KEY` | Provider public key | From provider dashboard |
+| `PAYMENT_API_KEY` | Provider public key (optional for FedaPay hosted checkout) | From provider dashboard |
 | `PAYMENT_API_SECRET` | Provider secret key | From provider dashboard |
 | `PAYMENT_WEBHOOK_SECRET` | Webhook signing secret (required for FedaPay; KKiaPay is verified server-side) | From provider dashboard |
 | `CINETPAY_API_KEY` | CinetPay API key | From CinetPay dashboard |
@@ -347,7 +347,7 @@ WHERE proname = 'confirm_deposit_payment';
 
 1. Set `PAYMENT_PROVIDER=kkiapay` (or `cinetpay` / `fedapay`)
 2. For KKiaPay, set all three `KKIAPAY_*_KEY` values and `KKIAPAY_SANDBOX=false`;
-   for FedaPay, set `PAYMENT_API_KEY`, `PAYMENT_API_SECRET`, and `PAYMENT_WEBHOOK_SECRET`
+   for FedaPay, set `PAYMENT_API_SECRET` and `PAYMENT_WEBHOOK_SECRET`
 3. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 4. Configure the provider webhook URL when using CinetPay or FedaPay. KKiaPay
    confirms transactions through its server SDK after the widget success event.
@@ -381,8 +381,12 @@ Important: The `create_order` SQL function previously hardcoded `provider: 'mock
 ### FedaPay
 - Amount: XOF with `div:1` (no cents)
 - Currency: `currency_id` (numeric), `1 = XOF`
+- The server creates a transaction, then requests its hosted checkout link from
+  `POST /v1/transactions/{id}/token`; the returned URL is stored for safe retries.
+- Configure the signed event webhook to `https://your-domain.com/api/payment/webhook`
+- Production requires `PAYMENT_API_SECRET` and `PAYMENT_WEBHOOK_SECRET`; the public API key is optional for hosted checkout.
 - Signature header: `x-fedapay-signature`
-- Event parsing: `entity` field is JSON string (must parse twice)
+- Event parsing accepts `entity` as either an object or a JSON-encoded string.
 - Webhook package: `fedapay` npm package
 
 ### KKiaPay

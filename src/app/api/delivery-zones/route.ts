@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/request';
 import {
   normalizeCity,
   isSupportedCountry,
-  isUndefinedColumnError,
   groupCitiesByName,
 } from '@/lib/delivery-zones';
+import { getSubdivisionCodesForCities, isGeographicCountry } from '@/lib/geography-data';
 
 // ---------------------------------------------------------------------------
 // GET /api/delivery-zones?city=…&country=…   → zones de livraison d'une ville
 // GET /api/delivery-zones?cities=1&country=… → liste des villes couvertes
 //
-// La colonne générée `city_normalized` (migration 20260924000000) permet une
-// recherche insensible aux accents. Tant qu'elle n'est pas déployée, la requête
-// échoue en 42703 : on retombe alors sur un filtrage en mémoire (le(tableau des
-// zones du pays est petit) pour ne pas casser le checkout en attendant.
+// Les villes sont normalisées en mémoire pour que le checkout ne dépende pas
+// d'une colonne SQL générée qui peut être absente ou périmée.
 // ---------------------------------------------------------------------------
 
 type ZoneRow = {
@@ -53,14 +51,16 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city');
     const country = (searchParams.get('country') || 'BJ').toUpperCase();
 
-    if (!isSupportedCountry(country)) {
+    if (!isSupportedCountry(country) || !isGeographicCountry(country)) {
       return NextResponse.json(
         { success: false, error: 'Pays non pris en charge' },
         { status: 400 }
       );
     }
 
-    const supabase = await createServerSupabaseClient();
+    // RLS may hide valid delivery zones from anonymous checkout visitors.
+    // Use the server-only admin client, then expose only active public fields.
+    const supabase = createAdminSupabaseClient();
     const base = supabase
       .from('delivery_zones')
       .select('id, city, zone_name, delivery_fee')
@@ -81,7 +81,13 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true, data: groupCitiesByName(data || []) });
+      const groupedCities = groupCitiesByName(data || []);
+      const regionCodes = getSubdivisionCodesForCities(country, groupedCities.map((city) => city.name));
+      const cities = groupedCities.map((city) => ({
+        ...city,
+        region_code: regionCodes.get(normalizeCity(city.name)) || null,
+      }));
+      return NextResponse.json({ success: true, data: cities });
     }
 
     if (!city || !city.trim()) {
@@ -91,29 +97,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Comparaison insensible aux accents / à la casse / aux espaces inutiles
-    const normalized = normalizeCity(city);
-
-    let rows: ZoneRow[] | null = null;
-    let error: { code?: string; message?: string } | null = null;
-
-    ({ data: rows, error } = await base
-      .eq('city_normalized', normalized)
-      .order('zone_name'));
-
-    if (error && isUndefinedColumnError(error)) {
-      // Fallback : on récupère les zones du pays et on normalise en mémoire.
-      console.warn('[DELIVERY_ZONES_FALLBACK] city_normalized absent — migration 20260924000000 à déployer');
-      const fallback = await base.order('city');
-      if (fallback.error) {
-        console.error('[DELIVERY_ZONES_ERROR]', fallback.error.message);
-        return NextResponse.json(
-          { success: false, data: [], error: 'Erreur lors du chargement des zones' },
-          { status: 500 }
-        );
-      }
-      rows = (fallback.data || []).filter((z) => normalizeCity(z.city) === normalized);
-    } else if (error) {
+    // The country has a bounded set of zones. Filtering in memory keeps this
+    // lookup consistent with order validation and avoids stale generated data.
+    const { data: countryZones, error } = await base.order('city');
+    if (error) {
       console.error('[DELIVERY_ZONES_ERROR]', error.message);
       return NextResponse.json(
         { success: false, data: [], error: 'Erreur lors du chargement des zones' },
@@ -121,7 +108,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, data: (rows || []).map(toZone) });
+    const normalized = normalizeCity(city);
+    const rows = (countryZones || [])
+      .filter((zone) => normalizeCity(zone.city) === normalized)
+      .sort((a, b) => a.zone_name.localeCompare(b.zone_name, 'fr'));
+
+    return NextResponse.json({ success: true, data: rows.map(toZone) });
   } catch {
     console.error('[DELIVERY_ZONES_ERROR] Internal error');
     return NextResponse.json({ success: false, data: [], error: 'Erreur interne' }, { status: 500 });
